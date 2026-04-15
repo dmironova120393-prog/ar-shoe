@@ -3,37 +3,26 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="theme-color" content="#000000">
-<title>AR Shoe Try-On</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
-
+<title>Shoe AR</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --black: #000;
-  --white: #fff;
-  --off: #f5f3ef;
-  --ink: #111;
-  --muted: #888;
-  --line: rgba(0,0,0,0.1);
-  --accent: #ff3c00;
-  --accent2: #0066ff;
-  --green: #00c853;
-  --panel: 300px;
-  --hdr: 56px;
-  --ftr: 64px;
+  --bg: #0a0a0a;
+  --surface: #141414;
+  --border: rgba(255,255,255,0.08);
+  --text: #f0ede8;
+  --muted: rgba(240,237,232,0.4);
+  --accent: #c8f04a;
+  --accent2: #4af0c8;
+  --danger: #f04a4a;
+  --panel-w: 260px;
 }
 
-html,body {
-  height: 100%;
-  background: var(--off);
-  color: var(--ink);
-  font-family: 'Space Grotesk', sans-serif;
-  overflow: hidden;
+html, body {
+  height: 100%; background: var(--bg); color: var(--text);
+  font-family: 'DM Sans', sans-serif; overflow: hidden;
   -webkit-tap-highlight-color: transparent;
 }
 
@@ -41,505 +30,362 @@ html,body {
 #app {
   height: 100vh;
   display: grid;
-  grid-template-rows: var(--hdr) 1fr var(--ftr);
-  grid-template-columns: var(--panel) 1fr var(--panel);
+  grid-template-columns: var(--panel-w) 1fr var(--panel-w);
+  grid-template-rows: 48px 1fr 52px;
 }
 
 /* ── HEADER ── */
 header {
   grid-column: 1/-1;
-  display: flex;
-  align-items: center;
-  padding: 0 24px;
-  border-bottom: 1px solid var(--line);
-  background: var(--white);
-  gap: 20px;
+  display: flex; align-items: center; gap: 12px;
+  padding: 0 20px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
 }
-
 .logo {
-  font-family: 'Space Mono', monospace;
-  font-size: 14px;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  color: var(--ink);
-  text-transform: uppercase;
+  font-family: 'DM Mono', monospace;
+  font-size: 13px; font-weight: 500;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--accent);
 }
-.logo em { color: var(--accent); font-style: normal; }
-
-.hdr-pill {
-  background: var(--off);
-  border: 1px solid var(--line);
-  border-radius: 100px;
-  padding: 4px 12px;
-  font-family: 'Space Mono', monospace;
-  font-size: 10px;
-  color: var(--muted);
-  letter-spacing: 0.05em;
+.pill {
+  font-family: 'DM Mono', monospace; font-size: 9px;
+  padding: 3px 9px; border-radius: 100px;
+  border: 1px solid var(--border);
+  color: var(--muted); letter-spacing: 0.08em;
+  transition: all 0.3s;
 }
-.hdr-pill.ok { background: #e6f9ed; border-color: #b3ecc9; color: #1a7f3c; }
-.hdr-pill.live { background: #fff0eb; border-color: #ffc4ad; color: var(--accent); }
+.pill.on  { border-color: var(--accent); color: var(--accent); background: rgba(200,240,74,0.08); }
+.pill.live{ border-color: var(--accent2); color: var(--accent2); background: rgba(74,240,200,0.08); }
+.pill.err { border-color: var(--danger); color: var(--danger); }
+.hdr-r { margin-left: auto; display: flex; gap: 8px; align-items: center; }
 
-.hdr-right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
-
-/* ── PANELS ── */
-#panel-l, #panel-r {
-  background: var(--white);
-  border-right: 1px solid var(--line);
-  display: flex;
-  flex-direction: column;
+/* ── SIDE PANELS ── */
+.panel {
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex; flex-direction: column;
   overflow: hidden;
 }
-#panel-r { border-right: none; border-left: 1px solid var(--line); }
+.panel.right { border-right: none; border-left: 1px solid var(--border); }
+.pscroll { flex: 1; overflow-y: auto; padding: 16px 14px; display: flex; flex-direction: column; gap: 18px; }
+.pscroll::-webkit-scrollbar { width: 0; }
 
-.panel-inner { flex: 1; overflow-y: auto; padding: 20px 18px; display: flex; flex-direction: column; gap: 22px; }
-.panel-inner::-webkit-scrollbar { width: 0; }
-
-.p-block { display: flex; flex-direction: column; gap: 10px; }
-.p-label {
-  font-family: 'Space Mono', monospace;
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.15em;
-  text-transform: uppercase;
-  color: var(--muted);
-  padding-bottom: 2px;
-  border-bottom: 1px solid var(--line);
+.sec-label {
+  font-family: 'DM Mono', monospace; font-size: 9px;
+  font-weight: 500; letter-spacing: 0.18em; text-transform: uppercase;
+  color: var(--muted); padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
 }
 
 /* ── VIEWPORT ── */
 #vp {
-  position: relative;
-  background: #000;
-  overflow: hidden;
+  position: relative; background: #000; overflow: hidden;
 }
-
-#cam {
+#video {
   position: absolute; inset: 0;
   width: 100%; height: 100%;
   object-fit: cover;
-  transform: none; /* NO mirror — iPhone back camera */
 }
-
-#canvas3d, #canvas2d {
+#canvas {
   position: absolute; inset: 0;
   width: 100%; height: 100%;
   pointer-events: none;
 }
 
-/* idle state */
+/* idle overlay */
 #idle {
-  position: absolute; inset: 0;
+  position: absolute; inset: 0; z-index: 4;
   display: flex; flex-direction: column;
-  align-items: center; justify-content: center;
-  gap: 16px;
-  background: var(--ink);
-  transition: opacity 0.4s;
-  z-index: 5;
+  align-items: center; justify-content: center; gap: 20px;
+  background: #000;
+  transition: opacity 0.5s;
 }
 #idle.gone { opacity: 0; pointer-events: none; }
-
-.idle-ring {
-  width: 72px; height: 72px;
-  border: 1.5px solid rgba(255,255,255,0.15);
-  border-radius: 50%;
+.idle-icon {
+  width: 64px; height: 64px; border-radius: 50%;
+  border: 1px solid rgba(255,255,255,0.1);
   display: flex; align-items: center; justify-content: center;
+  font-size: 26px;
 }
-.idle-ring svg { width: 30px; height: 30px; stroke: rgba(255,255,255,0.3); fill: none; }
-.idle-h { font-family: 'Space Mono', monospace; font-size: 15px; color: #fff; font-weight: 700; letter-spacing: -0.02em; }
-.idle-p { font-size: 12px; color: rgba(255,255,255,0.4); text-align: center; line-height: 1.7; max-width: 220px; }
+.idle-title { font-size: 16px; font-weight: 300; color: var(--text); letter-spacing: 0.05em; }
+.idle-sub { font-size: 12px; color: var(--muted); text-align: center; line-height: 1.8; }
 
-/* scan overlay */
-@keyframes scan { 0% { top: -2px; } 100% { top: 100%; } }
-#scanline {
-  position: absolute; left: 0; right: 0; height: 1px;
-  background: linear-gradient(90deg, transparent 0%, var(--accent2) 50%, transparent 100%);
-  opacity: 0; pointer-events: none;
-  animation: scan 3s linear infinite;
-}
-#scanline.on { opacity: 0.4; }
-
-/* corner marks */
-.corner {
-  position: absolute; width: 18px; height: 18px;
-  pointer-events: none;
-}
-.corner::before, .corner::after { content: ''; position: absolute; background: rgba(255,255,255,0.5); }
-.corner.tl { top: 16px; left: 16px; }
-.corner.tl::before { top:0;left:0;width:100%;height:1px; }
-.corner.tl::after  { top:0;left:0;width:1px;height:100%; }
-.corner.tr { top: 16px; right: 16px; }
-.corner.tr::before { top:0;right:0;width:100%;height:1px; }
-.corner.tr::after  { top:0;right:0;width:1px;height:100%; }
-.corner.bl { bottom: 16px; left: 16px; }
-.corner.bl::before { bottom:0;left:0;width:100%;height:1px; }
-.corner.bl::after  { bottom:0;left:0;width:1px;height:100%; }
-.corner.br { bottom: 16px; right: 16px; }
-.corner.br::before { bottom:0;right:0;width:100%;height:1px; }
-.corner.br::after  { bottom:0;right:0;width:1px;height:100%; }
-
-/* vp HUD */
-#hud {
-  position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%);
-  display: flex; gap: 8px; align-items: center;
-  background: rgba(0,0,0,0.55); border: 1px solid rgba(255,255,255,0.1);
-  border-radius: 100px; padding: 5px 14px;
-  backdrop-filter: blur(8px);
-  pointer-events: none; opacity: 0; transition: opacity 0.4s;
+/* status bar */
+#statusbar {
+  position: absolute; bottom: 12px; left: 50%;
+  transform: translateX(-50%);
+  background: rgba(10,10,10,0.75); border: 1px solid var(--border);
+  border-radius: 100px; padding: 5px 16px;
+  display: flex; align-items: center; gap: 8px;
+  backdrop-filter: blur(10px);
+  opacity: 0; pointer-events: none; transition: opacity 0.3s;
   white-space: nowrap;
 }
-#hud.on { opacity: 1; }
-.hud-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--green); box-shadow: 0 0 4px var(--green); }
-.hud-txt { font-family: 'Space Mono', monospace; font-size: 10px; color: rgba(255,255,255,0.7); }
+#statusbar.on { opacity: 1; }
+.sb-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent2); box-shadow: 0 0 6px var(--accent2); }
+.sb-txt { font-family: 'DM Mono', monospace; font-size: 10px; color: rgba(255,255,255,0.6); }
 
 /* ── FOOTER ── */
 footer {
   grid-column: 1/-1;
-  border-top: 1px solid var(--line);
-  background: var(--white);
+  border-top: 1px solid var(--border);
+  background: var(--surface);
   display: flex; align-items: center;
-  padding: 0 24px; gap: 10px;
+  padding: 0 20px; gap: 8px;
 }
-.ftr-r { margin-left: auto; font-family: 'Space Mono', monospace; font-size: 9px; color: var(--muted); letter-spacing: 0.05em; }
+.ftr-r { margin-left: auto; font-family: 'DM Mono', monospace; font-size: 9px; color: var(--muted); }
 
 /* ── BUTTONS ── */
 .btn {
-  display: flex; align-items: center; justify-content: center; gap: 7px;
-  padding: 0 16px; height: 40px;
-  border-radius: 8px;
-  border: 1px solid var(--line);
-  background: var(--off);
-  color: var(--ink);
-  font-family: 'Space Grotesk', sans-serif;
-  font-size: 13px; font-weight: 500;
-  cursor: pointer;
-  transition: background 0.15s, transform 0.1s;
-  width: 100%;
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  height: 36px; padding: 0 14px; border-radius: 6px;
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,0.04); color: var(--text);
+  font-family: 'DM Sans', sans-serif; font-size: 12px; font-weight: 500;
+  cursor: pointer; transition: all 0.15s; width: 100%;
   -webkit-appearance: none;
 }
+.btn:hover { background: rgba(255,255,255,0.08); }
 .btn:active { transform: scale(0.97); }
-.btn svg { width: 13px; height: 13px; flex-shrink: 0; }
-.btn:disabled { opacity: 0.3; cursor: not-allowed; }
+.btn:disabled { opacity: 0.25; cursor: not-allowed; }
+.btn.primary { background: var(--accent); color: #0a0a0a; border-color: var(--accent); font-weight: 600; }
+.btn.primary:hover { background: #d4f55a; }
+.btn.danger { background: rgba(240,74,74,0.1); border-color: rgba(240,74,74,0.3); color: var(--danger); }
+.btn.sm { height: 30px; font-size: 11px; padding: 0 10px; }
 
-.btn-primary { background: var(--ink); color: #fff; border-color: var(--ink); }
-.btn-primary:hover { background: #222; }
-.btn-accent { background: var(--accent); color: #fff; border-color: var(--accent); }
-.btn-ghost { background: transparent; }
-.btn-danger { border-color: #ffb3a3; color: var(--accent); background: #fff5f2; }
-.btn-sm { height: 34px; font-size: 12px; padding: 0 12px; }
-
-/* ── MODEL CHIP ── */
-.model-chip {
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  padding: 12px 14px;
-  display: flex; flex-direction: column; gap: 6px;
-  background: var(--off);
-}
-.chip-top { display: flex; align-items: center; gap: 8px; }
-.chip-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--line); flex-shrink: 0; transition: background 0.3s; }
-.chip-dot.loaded { background: var(--green); box-shadow: 0 0 5px var(--green); }
-.chip-dot.loading { background: #ffb300; animation: pulse 1s infinite; }
-@keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.3; } }
-.chip-name { font-family: 'Space Mono', monospace; font-size: 11px; font-weight: 700; color: var(--ink); }
-.chip-sub { font-family: 'Space Mono', monospace; font-size: 9px; color: var(--muted); }
-
-/* ── FILE UPLOAD ── */
+/* ── UPLOAD ── */
 .upload-zone {
-  border: 1.5px dashed var(--line);
-  border-radius: 10px; padding: 16px 12px;
-  text-align: center; cursor: pointer;
-  transition: border-color 0.2s;
-  position: relative;
+  border: 1px dashed var(--border); border-radius: 8px;
+  padding: 16px 12px; text-align: center; cursor: pointer;
+  position: relative; transition: border-color 0.2s;
 }
-.upload-zone:hover { border-color: rgba(0,0,0,0.25); }
-.upload-zone.has { border-style: solid; border-color: var(--green); }
+.upload-zone:hover { border-color: rgba(255,255,255,0.2); }
+.upload-zone.has { border-style: solid; border-color: var(--accent); }
 .upload-zone input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
-.upload-icon { font-size: 20px; margin-bottom: 5px; }
-.upload-txt { font-size: 11px; color: var(--muted); font-family: 'Space Mono', monospace; line-height: 1.5; }
-.upload-file { font-size: 10px; color: var(--green); margin-top: 4px; font-family: 'Space Mono', monospace; word-break: break-all; }
+.upload-icon { font-size: 22px; margin-bottom: 6px; }
+.upload-txt { font-size: 11px; color: var(--muted); font-family: 'DM Mono', monospace; line-height: 1.6; }
+.upload-name { font-size: 10px; color: var(--accent); margin-top: 4px; font-family: 'DM Mono', monospace; word-break: break-all; }
+
+/* model status chip */
+.model-chip {
+  background: rgba(255,255,255,0.03); border: 1px solid var(--border);
+  border-radius: 8px; padding: 10px 12px;
+  display: flex; flex-direction: column; gap: 4px;
+}
+.chip-row { display: flex; align-items: center; gap: 8px; }
+.chip-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--border); flex-shrink: 0; transition: all 0.3s; }
+.chip-dot.loading { background: #ffb300; animation: pulse 1s infinite; }
+.chip-dot.ready { background: var(--accent); box-shadow: 0 0 6px var(--accent); }
+.chip-dot.err { background: var(--danger); }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+.chip-name { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--text); }
+.chip-sub { font-family: 'DM Mono', monospace; font-size: 9px; color: var(--muted); }
 
 /* ── SLIDERS ── */
-.sl-row { display: flex; flex-direction: column; gap: 5px; }
-.sl-top { display: flex; justify-content: space-between; align-items: center; }
-.sl-name { font-size: 12px; color: var(--ink); }
-.sl-val { font-family: 'Space Mono', monospace; font-size: 10px; color: var(--accent); min-width: 36px; text-align: right; }
-
+.sl-group { display: flex; flex-direction: column; gap: 10px; }
+.sl-row { display: flex; flex-direction: column; gap: 4px; }
+.sl-head { display: flex; justify-content: space-between; }
+.sl-lbl { font-size: 11px; color: var(--muted); }
+.sl-val { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--accent); }
 input[type=range] {
-  -webkit-appearance: none;
-  width: 100%; height: 2px;
-  background: var(--line);
-  border-radius: 1px; outline: none; cursor: pointer;
+  -webkit-appearance: none; width: 100%; height: 2px;
+  background: rgba(255,255,255,0.1); border-radius: 1px; outline: none; cursor: pointer;
 }
 input[type=range]::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  width: 14px; height: 14px;
-  border-radius: 50%;
-  background: var(--ink); border: none; cursor: pointer;
+  -webkit-appearance: none; width: 12px; height: 12px;
+  border-radius: 50%; background: var(--text); cursor: pointer;
 }
-
-/* ── TOGGLES ── */
-.tog-row { display: flex; align-items: center; justify-content: space-between; padding: 2px 0; }
-.tog-label { font-size: 12px; color: var(--ink); }
-.tog {
-  width: 34px; height: 18px;
-  border-radius: 9px;
-  background: var(--line); border: none;
-  cursor: pointer; position: relative;
-  transition: background 0.2s; flex-shrink: 0;
-}
-.tog.on { background: var(--ink); }
-.tog::after {
-  content: ''; position: absolute;
-  width: 12px; height: 12px;
-  border-radius: 50%; background: #fff;
-  top: 3px; left: 3px;
-  transition: transform 0.2s;
-}
-.tog.on::after { transform: translateX(16px); }
 
 /* ── METRICS ── */
 .metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
-.m-card {
-  background: var(--off); border-radius: 8px;
-  padding: 10px; border: 1px solid var(--line);
-}
-.m-lbl { font-family: 'Space Mono', monospace; font-size: 8px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; }
-.m-val { font-size: 20px; font-weight: 600; color: var(--ink); margin-top: 2px; font-variant-numeric: tabular-nums; }
-.m-val.g { color: var(--green); }
+.m-card { background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; }
+.m-lbl { font-family: 'DM Mono', monospace; font-size: 8px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; }
+.m-val { font-size: 18px; font-weight: 500; color: var(--text); margin-top: 2px; font-variant-numeric: tabular-nums; }
+.m-val.g { color: var(--accent); }
 .m-val.b { color: var(--accent2); }
-.m-val.r { color: var(--accent); }
+
+/* ── TOGGLES ── */
+.tog-row { display: flex; align-items: center; justify-content: space-between; padding: 2px 0; }
+.tog-lbl { font-size: 11px; color: var(--muted); }
+.tog {
+  width: 32px; height: 17px; border-radius: 9px;
+  background: rgba(255,255,255,0.1); border: none; cursor: pointer;
+  position: relative; transition: background 0.2s; flex-shrink: 0;
+}
+.tog.on { background: var(--accent); }
+.tog::after {
+  content: ''; position: absolute;
+  width: 11px; height: 11px; border-radius: 50%; background: #000;
+  top: 3px; left: 3px; transition: transform 0.2s;
+}
+.tog.on::after { transform: translateX(15px); }
 
 /* ── LOG ── */
-#log { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 2px; padding: 12px 14px; background: var(--off); }
+#log {
+  flex: 1; overflow-y: auto; padding: 10px 14px;
+  display: flex; flex-direction: column; gap: 1px;
+  background: #0a0a0a;
+}
 #log::-webkit-scrollbar { width: 0; }
-.le { font-family: 'Space Mono', monospace; font-size: 9px; color: var(--muted); padding: 2px 0; line-height: 1.5; }
-.le.ok { color: var(--green); }
-.le.w  { color: #c07000; }
-.le.e  { color: var(--accent); }
-.p-label.log-lbl { margin: 0; border-bottom: none; padding: 14px 14px 8px; }
+.le { font-family: 'DM Mono', monospace; font-size: 9px; color: var(--muted); line-height: 1.6; }
+.le.ok { color: var(--accent); }
+.le.w  { color: #ffb300; }
+.le.e  { color: var(--danger); }
+.le.b  { color: var(--accent2); }
 
 /* ── TOAST ── */
 #toast {
-  position: fixed; bottom: 80px; left: 50%;
-  transform: translateX(-50%) translateY(12px);
-  background: var(--ink); color: #fff;
-  border-radius: 100px; padding: 8px 18px;
-  font-size: 12px; font-family: 'Space Mono', monospace;
+  position: fixed; bottom: 70px; left: 50%;
+  transform: translateX(-50%) translateY(10px);
+  background: var(--text); color: #0a0a0a;
+  border-radius: 100px; padding: 7px 18px;
+  font-size: 12px; font-family: 'DM Mono', monospace;
   opacity: 0; pointer-events: none;
-  transition: all 0.25s; z-index: 999; white-space: nowrap;
+  transition: all 0.22s; z-index: 999; white-space: nowrap;
 }
 #toast.on { opacity: 1; transform: translateX(-50%) translateY(0); }
 
-/* ── LOADING ── */
-#loader {
-  position: fixed; inset: 0;
-  background: var(--ink);
-  display: flex; flex-direction: column;
-  align-items: center; justify-content: center; gap: 20px;
-  z-index: 1000; transition: opacity 0.5s;
-}
-#loader.gone { opacity: 0; pointer-events: none; }
-.ld-logo { font-family: 'Space Mono', monospace; font-size: 18px; color: #fff; font-weight: 700; letter-spacing: -0.03em; }
-.ld-logo em { color: var(--accent); font-style: normal; }
-.ld-bar-bg { width: 200px; height: 1px; background: rgba(255,255,255,0.15); }
-.ld-bar { height: 1px; background: var(--white); width: 0%; transition: width 0.4s; }
-.ld-msg { font-family: 'Space Mono', monospace; font-size: 10px; color: rgba(255,255,255,0.4); }
-
 /* ── MOBILE ── */
-@media (max-width: 720px) {
-  :root { --panel: 0px; }
-  #panel-l, #panel-r { display: none; }
+@media (max-width: 700px) {
+  :root { --panel-w: 0px; }
+  .panel { display: none; }
+  #app { grid-template-columns: 1fr; grid-template-rows: 48px 1fr auto 52px; }
   #mob { display: flex !important; }
-  footer .ftr-r { display: none; }
-  #app { grid-template-columns: 1fr; grid-template-rows: var(--hdr) 1fr auto var(--ftr); }
 }
-
 #mob {
-  display: none;
-  flex-direction: column;
-  gap: 0;
-  background: var(--white);
-  border-top: 1px solid var(--line);
+  display: none; flex-direction: column;
+  background: var(--surface); border-top: 1px solid var(--border);
 }
-.mob-btns {
-  display: flex; gap: 8px; padding: 12px 14px;
-}
-.mob-sliders {
-  display: flex; flex-direction: column; gap: 8px;
-  padding: 0 14px 12px;
-  border-top: 1px solid var(--line);
-}
-.mob-sl { display: flex; align-items: center; gap: 10px; padding-top: 8px; }
-.mob-sl-lbl { font-family: 'Space Mono', monospace; font-size: 9px; color: var(--muted); width: 52px; flex-shrink: 0; }
-.mob-sl-val { font-family: 'Space Mono', monospace; font-size: 9px; color: var(--accent); width: 28px; text-align: right; flex-shrink: 0; }
-
-/* footer btns */
-.f-btn {
-  display: flex; align-items: center; gap: 6px;
-  padding: 0 16px; height: 38px;
-  border-radius: 7px; border: 1px solid var(--line);
-  background: transparent; color: var(--ink);
-  font-family: 'Space Grotesk', sans-serif;
-  font-size: 12px; font-weight: 500; cursor: pointer;
-  transition: background 0.15s, transform 0.1s;
-  -webkit-appearance: none;
-}
-.f-btn:active { transform: scale(0.97); }
-.f-btn svg { width: 12px; height: 12px; }
-.f-btn.acc { background: var(--ink); color: #fff; border-color: var(--ink); }
+.mob-row { display: flex; gap: 8px; padding: 10px 12px; }
+.mob-sliders { padding: 0 12px 10px; display: flex; flex-direction: column; gap: 8px; border-top: 1px solid var(--border); padding-top: 8px; }
+.mob-sl { display: flex; align-items: center; gap: 8px; }
+.mob-sl-lbl { font-family: 'DM Mono', monospace; font-size: 9px; color: var(--muted); width: 46px; flex-shrink: 0; }
+.mob-sl-val { font-family: 'DM Mono', monospace; font-size: 9px; color: var(--accent); width: 30px; text-align: right; flex-shrink: 0; }
 </style>
 </head>
 <body>
-
-<div id="loader">
-  <div class="ld-logo">AR <em>/</em> SHOE</div>
-  <div class="ld-bar-bg"><div class="ld-bar" id="ld-bar"></div></div>
-  <div class="ld-msg" id="ld-msg">Starting up…</div>
-</div>
 
 <div id="toast"></div>
 
 <div id="app">
 
-  <!-- HEADER -->
   <header>
-    <div class="logo">AR <em>/</em> SHOE</div>
-    <div class="hdr-pill" id="pill-cam">camera off</div>
-    <div class="hdr-pill" id="pill-model">no model</div>
-    <div class="hdr-pill" id="pill-track">not tracking</div>
-    <div class="hdr-right">
-      <button class="f-btn" id="btn-screenshot" title="Screenshot">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="12" cy="12" r="4"/></svg>
-        Save
-      </button>
+    <div class="logo">SHOE·AR</div>
+    <div class="pill" id="pill-cam">no camera</div>
+    <div class="pill" id="pill-model">no model</div>
+    <div class="pill" id="pill-track">idle</div>
+    <div class="hdr-r">
+      <button class="btn sm" id="btn-shot">📷 Save</button>
     </div>
   </header>
 
   <!-- LEFT PANEL -->
-  <aside id="panel-l">
-    <div class="panel-inner">
+  <aside class="panel">
+    <div class="pscroll">
 
-      <div class="p-block">
-        <div class="p-label">Camera</div>
-        <button class="btn btn-primary" id="btn-cam-start">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
-          Start Camera
-        </button>
-        <button class="btn btn-danger" id="btn-cam-stop" style="display:none">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
-          Stop Camera
-        </button>
+      <div>
+        <div class="sec-label">Camera</div>
+        <div style="display:flex;flex-direction:column;gap:8px;margin-top:10px">
+          <button class="btn primary" id="btn-cam-start">▶ Start Camera</button>
+          <button class="btn danger" id="btn-cam-stop" style="display:none">■ Stop Camera</button>
+        </div>
       </div>
 
-      <div class="p-block">
-        <div class="p-label">3D Model</div>
-        <div class="model-chip" id="model-chip">
-          <div class="chip-top">
-            <div class="chip-dot loading" id="chip-dot"></div>
-            <span class="chip-name" id="chip-name">Loading model…</span>
+      <div>
+        <div class="sec-label">3D Shoe Model</div>
+        <div style="margin-top:10px;display:flex;flex-direction:column;gap:8px">
+          <div class="model-chip">
+            <div class="chip-row">
+              <div class="chip-dot" id="chip-dot"></div>
+              <span class="chip-name" id="chip-name">No model loaded</span>
+            </div>
+            <div class="chip-sub" id="chip-sub">Upload a .glb file below</div>
           </div>
-          <div class="chip-sub" id="chip-sub">waiting for shoe.glb</div>
-        </div>
-        <div class="upload-zone" id="upload-zone">
-          <input type="file" id="glb-input" accept=".glb,.gltf">
-          <div class="upload-icon">📦</div>
-          <div class="upload-txt">Drop a different .glb here<br>or tap to browse</div>
-          <div class="upload-file" id="upload-name" style="display:none"></div>
+          <div class="upload-zone" id="upload-zone">
+            <input type="file" id="glb-input" accept=".glb,.gltf">
+            <div class="upload-icon">📦</div>
+            <div class="upload-txt">Drop .glb / .gltf here<br>or tap to browse</div>
+            <div class="upload-name" id="upload-name" style="display:none"></div>
+          </div>
         </div>
       </div>
 
-      <div class="p-block">
-        <div class="p-label">Tracking</div>
-        <button class="btn" id="btn-track" disabled>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>
-          Start Tracking
-        </button>
-      </div>
-
-      <div class="p-block">
-        <div class="p-label">Detection Settings</div>
-        <div class="sl-row">
-          <div class="sl-top"><span class="sl-name">Min Detection</span><span class="sl-val" id="v-det">0.35</span></div>
-          <input type="range" id="sl-det" min="0.1" max="1" step="0.05" value="0.35">
-        </div>
-        <div class="sl-row">
-          <div class="sl-top"><span class="sl-name">Min Tracking</span><span class="sl-val" id="v-trk">0.35</span></div>
-          <input type="range" id="sl-trk" min="0.1" max="1" step="0.05" value="0.35">
+      <div>
+        <div class="sec-label">Tracking</div>
+        <div style="margin-top:10px">
+          <button class="btn" id="btn-track" disabled>▶ Start Tracking</button>
         </div>
       </div>
 
     </div>
 
     <!-- LOG -->
-    <div class="p-label log-lbl">Log</div>
+    <div class="sec-label" style="padding:10px 14px 6px;border-bottom:1px solid var(--border)">Log</div>
     <div id="log"></div>
   </aside>
 
   <!-- VIEWPORT -->
   <main id="vp">
-    <video id="cam" autoplay playsinline muted></video>
-    <canvas id="canvas3d"></canvas>
-    <canvas id="canvas2d"></canvas>
-
-    <div class="corner tl"></div>
-    <div class="corner tr"></div>
-    <div class="corner bl"></div>
-    <div class="corner br"></div>
-    <div id="scanline"></div>
-
-    <div id="hud">
-      <div class="hud-dot"></div>
-      <span class="hud-txt" id="hud-txt">tracking feet…</span>
-    </div>
+    <video id="video" autoplay playsinline muted></video>
+    <canvas id="canvas"></canvas>
 
     <div id="idle">
-      <div class="idle-ring">
-        <svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-      </div>
-      <div class="idle-h">AR Try-On</div>
-      <div class="idle-p">Start camera, then tap<br>Start Tracking to see your shoes</div>
+      <div class="idle-icon">👟</div>
+      <div class="idle-title">Shoe AR Try-On</div>
+      <div class="idle-sub">Start camera &amp; load a .glb<br>then hit Start Tracking</div>
+    </div>
+
+    <div id="statusbar">
+      <div class="sb-dot"></div>
+      <span class="sb-txt" id="sb-txt">tracking…</span>
     </div>
   </main>
 
   <!-- RIGHT PANEL -->
-  <aside id="panel-r">
-    <div class="panel-inner">
+  <aside class="panel right">
+    <div class="pscroll">
 
-      <div class="p-block">
-        <div class="p-label">Shoe Fit</div>
-        <div class="sl-row">
-          <div class="sl-top"><span class="sl-name">Scale</span><span class="sl-val" id="v-sc">1.00</span></div>
-          <input type="range" id="sl-sc" min="0.2" max="3" step="0.05" value="1.0">
+      <div>
+        <div class="sec-label">Shoe Fit</div>
+        <div class="sl-group" style="margin-top:10px">
+          <div class="sl-row">
+            <div class="sl-head"><span class="sl-lbl">Scale</span><span class="sl-val" id="v-sc">1.00</span></div>
+            <input type="range" id="sl-sc" min="0.3" max="4" step="0.05" value="1.0">
+          </div>
+          <div class="sl-row">
+            <div class="sl-head"><span class="sl-lbl">Height (Y)</span><span class="sl-val" id="v-y">0.00</span></div>
+            <input type="range" id="sl-y" min="-0.6" max="0.6" step="0.01" value="0">
+          </div>
+          <div class="sl-row">
+            <div class="sl-head"><span class="sl-lbl">Depth (Z)</span><span class="sl-val" id="v-z">0.00</span></div>
+            <input type="range" id="sl-z" min="-0.5" max="0.5" step="0.01" value="0">
+          </div>
+          <div class="sl-row">
+            <div class="sl-head"><span class="sl-lbl">Rotation</span><span class="sl-val" id="v-r">0°</span></div>
+            <input type="range" id="sl-r" min="-180" max="180" step="1" value="0">
+          </div>
+          <button class="btn sm" id="btn-reset" style="margin-top:2px">↺ Reset</button>
         </div>
-        <div class="sl-row">
-          <div class="sl-top"><span class="sl-name">Height (Y)</span><span class="sl-val" id="v-y">0.00</span></div>
-          <input type="range" id="sl-y" min="-0.5" max="0.5" step="0.01" value="0">
-        </div>
-        <div class="sl-row">
-          <div class="sl-top"><span class="sl-name">Depth (Z)</span><span class="sl-val" id="v-z">0.00</span></div>
-          <input type="range" id="sl-z" min="-0.5" max="0.5" step="0.01" value="0">
-        </div>
-        <div class="sl-row">
-          <div class="sl-top"><span class="sl-name">Rotation</span><span class="sl-val" id="v-r">0°</span></div>
-          <input type="range" id="sl-r" min="-180" max="180" step="1" value="0">
-        </div>
-        <button class="btn btn-ghost btn-sm" id="btn-reset">↺ Reset transform</button>
       </div>
 
-      <div class="p-block">
-        <div class="p-label">Render</div>
-        <div class="tog-row"><span class="tog-label">Show skeleton</span><div class="tog on" id="tog-sk"></div></div>
-        <div class="tog-row"><span class="tog-label">Show landmarks</span><div class="tog on" id="tog-lm"></div></div>
-        <div class="tog-row"><span class="tog-label">Both feet</span><div class="tog on" id="tog-bf"></div></div>
+      <div>
+        <div class="sec-label">Display</div>
+        <div style="margin-top:10px;display:flex;flex-direction:column;gap:8px">
+          <div class="tog-row"><span class="tog-lbl">Show skeleton</span><button class="tog on" id="tog-sk"></button></div>
+          <div class="tog-row"><span class="tog-lbl">Show landmarks</span><button class="tog on" id="tog-lm"></button></div>
+          <div class="tog-row"><span class="tog-lbl">Both feet</span><button class="tog on" id="tog-bf"></button></div>
+          <div class="tog-row"><span class="tog-lbl">Mirror video</span><button class="tog" id="tog-mir"></button></div>
+        </div>
       </div>
 
-      <div class="p-block">
-        <div class="p-label">Live Metrics</div>
-        <div class="metrics">
+      <div>
+        <div class="sec-label">Metrics</div>
+        <div class="metrics" style="margin-top:10px">
           <div class="m-card"><div class="m-lbl">FPS</div><div class="m-val g" id="m-fps">—</div></div>
-          <div class="m-card"><div class="m-lbl">Confidence</div><div class="m-val b" id="m-conf">—</div></div>
+          <div class="m-card"><div class="m-lbl">L Ankle</div><div class="m-val b" id="m-lc">—</div></div>
+          <div class="m-card"><div class="m-lbl">R Ankle</div><div class="m-val b" id="m-rc">—</div></div>
           <div class="m-card"><div class="m-lbl">Feet</div><div class="m-val" id="m-feet">—</div></div>
-          <div class="m-card"><div class="m-lbl">Points</div><div class="m-val" id="m-pts">—</div></div>
         </div>
       </div>
 
@@ -548,30 +394,23 @@ input[type=range]::-webkit-slider-thumb {
 
   <!-- MOBILE CONTROLS -->
   <div id="mob">
-    <div class="mob-btns">
-      <button class="btn btn-primary" id="mob-cam" style="flex:1">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
-        Camera
-      </button>
-      <button class="btn" id="mob-track" disabled style="flex:1">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>
-        Track
-      </button>
-      <button class="btn btn-ghost btn-sm" id="mob-shot" style="width:42px;flex-shrink:0;padding:0">📷</button>
-      <button class="btn btn-ghost btn-sm" id="mob-glb" style="width:42px;flex-shrink:0;padding:0" title="Load GLB">
-        📦
-        <input type="file" id="mob-glb-input" accept=".glb,.gltf" style="position:absolute;inset:0;opacity:0;cursor:pointer">
-      </button>
+    <div class="mob-row">
+      <button class="btn primary" id="mob-cam" style="flex:1">▶ Camera</button>
+      <button class="btn" id="mob-track" disabled style="flex:1">▶ Track</button>
+      <label class="btn sm" style="width:38px;flex-shrink:0;padding:0;cursor:pointer;position:relative">
+        📦<input type="file" id="mob-glb-input" accept=".glb,.gltf" style="position:absolute;inset:0;opacity:0;cursor:pointer">
+      </label>
+      <button class="btn sm" id="mob-shot" style="width:38px;flex-shrink:0;padding:0">📷</button>
     </div>
     <div class="mob-sliders">
       <div class="mob-sl">
         <span class="mob-sl-lbl">Scale</span>
-        <input type="range" id="mob-sc" min="0.2" max="3" step="0.05" value="1.0" style="flex:1">
+        <input type="range" id="mob-sc" min="0.3" max="4" step="0.05" value="1.0" style="flex:1">
         <span class="mob-sl-val" id="mob-v-sc">1.00</span>
       </div>
       <div class="mob-sl">
-        <span class="mob-sl-lbl">Height Y</span>
-        <input type="range" id="mob-y" min="-0.5" max="0.5" step="0.01" value="0" style="flex:1">
+        <span class="mob-sl-lbl">Height</span>
+        <input type="range" id="mob-y" min="-0.6" max="0.6" step="0.01" value="0" style="flex:1">
         <span class="mob-sl-val" id="mob-v-y">0.00</span>
       </div>
       <div class="mob-sl">
@@ -582,77 +421,59 @@ input[type=range]::-webkit-slider-thumb {
     </div>
   </div>
 
-  <!-- FOOTER -->
   <footer>
-    <button class="f-btn" id="btn-reset-f">↺ Reset</button>
-    <div class="ftr-r">MediaPipe Pose · Three.js r148 · WebAR</div>
+    <button class="btn sm" id="btn-reset-f">↺ Reset</button>
+    <div class="ftr-r">TF.js MoveNet · Three.js r148</div>
   </footer>
 
 </div>
 
 <!-- LIBS -->
-<script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5.1675469404/pose.js" crossorigin="anonymous"></script>
-<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3.1675466862/camera_utils.js" crossorigin="anonymous"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.148.0/build/three.min.js" crossorigin="anonymous"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.148.0/examples/js/loaders/GLTFLoader.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.17.0/dist/tf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/pose-detection@2.1.3/dist/pose-detection.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.148.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.148.0/examples/js/loaders/GLTFLoader.js"></script>
 
 <script>
-// ── Device detection ──
-const isIOS    = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-const isMobile = window.innerWidth <= 720 || isIOS;
+// ── Util ──
+const $ = id => document.getElementById(id);
+const isMobile = window.innerWidth <= 700;
+const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
 // ── State ──
 const S = {
-  camOn: false, tracking: false, modelLoaded: false,
-  mirror: false,   // back camera = no mirror
+  camOn: false, tracking: false, modelLoaded: false, mirror: false,
   showSkel: true, showLM: true, bothFeet: true,
   fps: 0, fpsF: 0, fpsT: performance.now(),
+  animId: null,
 };
 
-// ── DOM shortcuts ──
-const $  = id => document.getElementById(id);
-const cam         = $('cam');
-const c3          = $('canvas3d');
-const c2          = $('canvas2d');
-const ctx         = c2.getContext('2d');
-const idleEl      = $('idle');
-const scanEl      = $('scanline');
-const hudEl       = $('hud');
+// ── DOM ──
+const video     = $('video');
+const canvas    = $('canvas');
+const ctx       = canvas.getContext('2d');
+const idleEl    = $('idle');
+const statusEl  = $('statusbar');
 
-// ── Logging ──
-function log(msg, t='') {
+// ── Log ──
+function log(msg, t = '') {
   const el = document.createElement('div');
   el.className = 'le ' + t;
   el.textContent = '[' + new Date().toTimeString().slice(0,8) + '] ' + msg;
   $('log').appendChild(el);
   $('log').scrollTop = $('log').scrollHeight;
-  if ($('log').children.length > 60) $('log').firstChild.remove();
+  if ($('log').children.length > 80) $('log').firstChild.remove();
 }
 function toast(msg) {
   const t = $('toast'); t.textContent = msg; t.classList.add('on');
   setTimeout(() => t.classList.remove('on'), 2400);
 }
 
-// ── Loading ──
-function setLoad(pct, msg) {
-  $('ld-bar').style.width = pct + '%';
-  $('ld-msg').textContent = msg;
-}
-setLoad(15, 'Loading MediaPipe…');
-setTimeout(() => setLoad(45, 'Loading Three.js…'), 300);
-setTimeout(() => setLoad(75, 'Initialising renderer…'), 700);
-setTimeout(() => setLoad(95, 'Auto-loading shoe model…'), 1100);
-setTimeout(() => {
-  $('loader').classList.add('gone');
-  log('Ready. ' + (isIOS ? 'iPhone detected — back camera mode.' : 'Desktop mode.'), 'ok');
-  autoLoad();
-}, 1600);
-
 // ── Resize ──
 function resize() {
   const vp = $('vp');
-  c2.width = c3.width = vp.clientWidth;
-  c2.height = c3.height = vp.clientHeight;
+  canvas.width  = vp.clientWidth;
+  canvas.height = vp.clientHeight;
   if (renderer) {
     renderer.setSize(vp.clientWidth, vp.clientHeight);
     cam3d.aspect = vp.clientWidth / vp.clientHeight;
@@ -665,17 +486,21 @@ window.addEventListener('resize', resize);
 let renderer, scene, cam3d, shoeL = null, shoeR = null;
 
 function initThree() {
-  renderer = new THREE.WebGLRenderer({ canvas: c3, alpha: true, antialias: !isMobile });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  const c3 = document.createElement('canvas');
+  c3.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;pointer-events:none;';
+  $('vp').appendChild(c3);
+
+  renderer = new THREE.WebGLRenderer({ canvas: c3, alpha: true, antialias: true });
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 
   scene = new THREE.Scene();
-  cam3d = new THREE.PerspectiveCamera(60, 1, 0.01, 100);
+  cam3d = new THREE.PerspectiveCamera(60, 1, 0.001, 100);
   cam3d.position.set(0, 0, 2);
 
-  scene.add(new THREE.AmbientLight(0xffffff, 0.8));
-  const d = new THREE.DirectionalLight(0xffffff, 1.2);
-  d.position.set(1, 3, 2); scene.add(d);
-  scene.add(new THREE.HemisphereLight(0xffffff, 0x888888, 0.4));
+  scene.add(new THREE.AmbientLight(0xffffff, 0.9));
+  const dir = new THREE.DirectionalLight(0xffffff, 1.3);
+  dir.position.set(1, 3, 2); scene.add(dir);
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x444444, 0.4));
 
   resize();
   renderLoop();
@@ -683,7 +508,7 @@ function initThree() {
 }
 
 function renderLoop() {
-  requestAnimationFrame(renderLoop);
+  S.animId = requestAnimationFrame(renderLoop);
   renderer.render(scene, cam3d);
   S.fpsF++;
   const now = performance.now();
@@ -693,125 +518,110 @@ function renderLoop() {
   }
 }
 
-// ── Auto-load shoe.glb ──
-function autoLoad() {
-  loadGLBUrl('./shoe.glb', 'shoe.glb');
-}
-
-function loadGLBUrl(url, name) {
+// ── GLB Loading ──
+function loadGLB(url, name) {
   $('chip-dot').className = 'chip-dot loading';
   $('chip-name').textContent = name;
-  $('chip-sub').textContent = 'loading…';
+  $('chip-sub').textContent  = 'loading…';
 
   const loader = new THREE.GLTFLoader();
   loader.load(url, gltf => {
-    installModel(gltf, name);
-  }, xhr => {
-    if (xhr.total) {
-      const p = Math.round(xhr.loaded / xhr.total * 100);
-      $('chip-sub').textContent = 'loading ' + p + '%';
-    }
-  }, err => {
-    $('chip-dot').className = 'chip-dot';
-    $('chip-name').textContent = 'Not found';
-    $('chip-sub').textContent = 'Upload a .glb below';
-    log('Auto-load failed — use the upload zone.', 'w');
-    // Create a simple placeholder box so tracking can still be enabled
-    const geo = new THREE.BoxGeometry(0.15, 0.08, 0.3);
-    const mat = new THREE.MeshStandardMaterial({ color: 0x0066ff, opacity: 0.6, transparent: true });
-    shoeL = new THREE.Mesh(geo, mat);
+    if (shoeL) scene.remove(shoeL);
+    if (shoeR) scene.remove(shoeR);
+
+    shoeL = gltf.scene;
     shoeL.visible = false;
+
+    // normalise bounding box to unit size
+    const box    = new THREE.Box3().setFromObject(shoeL);
+    const size   = box.getSize(new THREE.Vector3());
+    const maxDim = Math.max(size.x, size.y, size.z);
+    const norm   = 0.3 / maxDim;
+    shoeL.scale.setScalar(norm);
+    const ctr = box.getCenter(new THREE.Vector3());
+    shoeL.position.sub(ctr.multiplyScalar(norm));
+
     scene.add(shoeL);
-    shoeR = shoeL.clone();
+    shoeR = shoeL.clone(true);
     shoeR.visible = false;
     scene.add(shoeR);
+
     S.modelLoaded = true;
-    $('chip-dot').className = 'chip-dot loaded';
-    $('chip-name').textContent = 'placeholder box';
-    $('chip-sub').textContent = 'upload a .glb to replace';
-    $('pill-model').textContent = 'placeholder';
-    $('pill-model').className = 'hdr-pill ok';
+    $('chip-dot').className = 'chip-dot ready';
+    $('chip-name').textContent = name;
+    $('chip-sub').textContent  = 'ready ✓';
+    $('pill-model').textContent = name;
+    $('pill-model').className   = 'pill on';
+    $('upload-zone').classList.add('has');
+    $('upload-name').textContent = name;
+    $('upload-name').style.display = 'block';
     updateTrackBtn();
-    log('Using placeholder box — upload a .glb to use a real shoe.', 'w');
+    toast(name + ' loaded ✓');
+    log('Model ready: ' + name, 'ok');
+  }, xhr => {
+    if (xhr.total) $('chip-sub').textContent = 'loading ' + Math.round(xhr.loaded/xhr.total*100) + '%';
+  }, err => {
+    $('chip-dot').className = 'chip-dot err';
+    $('chip-name').textContent = 'Load error';
+    $('chip-sub').textContent  = err.message || 'check file format';
+    log('GLB error: ' + err.message, 'e');
   });
 }
 
-function installModel(gltf, name) {
-  if (shoeL) { scene.remove(shoeL); shoeL = null; }
-  if (shoeR) { scene.remove(shoeR); shoeR = null; }
-
-  shoeL = gltf.scene;
-  shoeL.visible = false;
-
-  // Normalise size
-  const box    = new THREE.Box3().setFromObject(shoeL);
-  const size   = box.getSize(new THREE.Vector3());
-  const maxDim = Math.max(size.x, size.y, size.z);
-  shoeL.scale.setScalar(0.3 / maxDim);
-  const ctr = box.getCenter(new THREE.Vector3());
-  shoeL.position.sub(ctr.multiplyScalar(0.3 / maxDim));
-
-  scene.add(shoeL);
-  shoeR = shoeL.clone(true);
-  shoeR.visible = false;
-  shoeR.scale.x *= -1;
-  scene.add(shoeR);
-
-  S.modelLoaded = true;
-  $('chip-dot').className = 'chip-dot loaded';
-  $('chip-name').textContent = name;
-  $('chip-sub').textContent = 'model ready ✓';
-  $('pill-model').textContent = name;
-  $('pill-model').className = 'hdr-pill ok';
-  $('upload-zone').classList.add('has');
-  $('upload-name').textContent = name;
-  $('upload-name').style.display = 'block';
-
-  updateTrackBtn();
-  toast(name + ' loaded ✓');
-  log('Model ready: ' + name, 'ok');
-}
-
-// ── MediaPipe ──
-let pose, mpCam;
-
-const LM = {
-  LA:27, LH:29, LF:31,
-  RA:28, RH:30, RF:32,
-  LK:25, RK:26,
+// ── Shoe placement ──
+// MoveNet / BlazePose keypoint indices for feet
+// MoveNet (17 kp): 15=L ankle, 16=R ankle
+// BlazePose (33 kp): 27=L ankle, 28=R ankle, 29=L heel, 30=R heel, 31=L foot index, 32=R foot index
+const KP = {
+  L_ANKLE: 15, R_ANKLE: 16, // MoveNet
+  L_KNEE: 13,  R_KNEE: 14,
 };
 
-function initPose() {
-  pose = new Pose({
-    locateFile: f => 'https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5.1675469404/' + f
-  });
-  pose.setOptions({
-    modelComplexity: isMobile ? 0 : 1,
-    smoothLandmarks: true,
-    enableSegmentation: false,
-    minDetectionConfidence: +$('sl-det').value,
-    minTrackingConfidence:  +$('sl-trk').value,
-  });
-  pose.onResults(onResults);
-  log('Pose model ready (complexity=' + (isMobile?0:1) + ').', 'ok');
+function getSliderVal(desktopId, mobId) {
+  return parseFloat($(isMobile && mobId ? mobId : desktopId).value);
 }
 
-function onResults(r) {
-  if (!r.poseLandmarks) {
-    clearShoes(); drawOverlay(null);
-    $('m-conf').textContent = '—';
-    $('m-feet').textContent = '0';
-    $('m-pts').textContent  = '—';
-    return;
-  }
-  $('m-pts').textContent = r.poseLandmarks.length;
-  const lv = r.poseLandmarks[LM.LA]?.visibility || 0;
-  const rv = r.poseLandmarks[LM.RA]?.visibility || 0;
-  $('m-conf').textContent = Math.max(lv, rv).toFixed(2);
-  $('m-feet').textContent = (lv > 0.5 ? 1 : 0) + (rv > 0.5 ? 1 : 0);
+function placeShoe(model, kps, side) {
+  if (!model) return;
+  const ankleIdx = side === 'L' ? KP.L_ANKLE : KP.R_ANKLE;
+  const kneeIdx  = side === 'L' ? KP.L_KNEE  : KP.R_KNEE;
 
-  drawOverlay(r.poseLandmarks);
-  placeShoes(r.poseLandmarks);
+  const ankle = kps[ankleIdx];
+  const knee  = kps[kneeIdx];
+
+  if (!ankle || ankle.score < 0.2) { model.visible = false; return; }
+
+  const sc = getSliderVal('sl-sc', 'mob-sc');
+  const yO = getSliderVal('sl-y',  'mob-y');
+  const zO = parseFloat($('sl-z').value);
+  const rY = getSliderVal('sl-r',  'mob-r') * Math.PI / 180;
+
+  // convert from normalised video coords to NDC
+  const W = canvas.width, H = canvas.height;
+  function toNDC(kp) {
+    const nx = S.mirror ? 1 - kp.x / W : kp.x / W;
+    return new THREE.Vector3(nx * 2 - 1, -(kp.y / H * 2 - 1), 0);
+  }
+
+  const wA = toNDC(ankle);
+  wA.y += yO;
+  wA.z += zO;
+
+  // estimate foot direction from knee→ankle
+  let angle = rY;
+  if (knee && knee.score > 0.2) {
+    const wK = toNDC(knee);
+    const dir = new THREE.Vector2(wA.x - wK.x, wA.y - wK.y).normalize();
+    angle += Math.atan2(dir.x, dir.y);
+  }
+
+  const bs = sc * 0.22;
+
+  model.visible = true;
+  model.position.copy(wA);
+  model.rotation.set(0, angle, 0);
+  // mirror X for right shoe
+  model.scale.set(side === 'R' ? -bs : bs, bs, bs);
 }
 
 function clearShoes() {
@@ -819,97 +629,117 @@ function clearShoes() {
   if (shoeR) shoeR.visible = false;
 }
 
-// ── 2D overlay ──
-const SEGS = [
-  [LM.LK,LM.LA],[LM.LA,LM.LH],[LM.LA,LM.LF],[LM.LH,LM.LF],
-  [LM.RK,LM.RA],[LM.RA,LM.RH],[LM.RA,LM.RF],[LM.RH,LM.RF],
-];
+// ── 2D skeleton overlay ──
+const SEGS = [[KP.L_KNEE, KP.L_ANKLE], [KP.R_KNEE, KP.R_ANKLE]];
 
-function drawOverlay(lms) {
-  const W = c2.width, H = c2.height;
+function drawOverlay(kps) {
+  const W = canvas.width, H = canvas.height;
   ctx.clearRect(0, 0, W, H);
-  if (!lms) return;
+  if (!kps) return;
 
-  function px(lm) {
-    return { x: (S.mirror ? 1 - lm.x : lm.x) * W, y: lm.y * H };
+  function px(kp) {
+    return { x: (S.mirror ? W - kp.x : kp.x), y: kp.y };
   }
 
   if (S.showSkel) {
-    ctx.lineWidth = 1.5;
-    ctx.strokeStyle = 'rgba(0,102,255,0.6)';
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = 'rgba(74,240,200,0.55)';
     for (const [a, b] of SEGS) {
-      const la = lms[a], lb = lms[b];
-      if (!la || !lb || la.visibility < 0.1 || lb.visibility < 0.1) continue;
-      const pa = px(la), pb = px(lb);
-      ctx.beginPath();
-      ctx.moveTo(pa.x, pa.y);
-      ctx.lineTo(pb.x, pb.y);
-      ctx.stroke();
+      const ka = kps[a], kb = kps[b];
+      if (!ka || !kb || ka.score < 0.2 || kb.score < 0.2) continue;
+      const pa = px(ka), pb = px(kb);
+      ctx.beginPath(); ctx.moveTo(pa.x, pa.y); ctx.lineTo(pb.x, pb.y); ctx.stroke();
     }
   }
 
   if (S.showLM) {
-    for (const idx of Object.values(LM)) {
-      const lm = lms[idx];
-      if (!lm || lm.visibility < 0.1) continue;
-      const p = px(lm);
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, isMobile ? 5 : 4, 0, Math.PI * 2);
-      ctx.fillStyle = 'rgba(255,60,0,0.85)';
+    for (const idx of [KP.L_ANKLE, KP.R_ANKLE, KP.L_KNEE, KP.R_KNEE]) {
+      const kp = kps[idx];
+      if (!kp || kp.score < 0.2) continue;
+      const p = px(kp);
+      ctx.beginPath(); ctx.arc(p.x, p.y, 5, 0, Math.PI*2);
+      ctx.fillStyle = idx === KP.L_ANKLE || idx === KP.R_ANKLE
+        ? 'rgba(200,240,74,0.9)' : 'rgba(74,240,200,0.7)';
       ctx.fill();
     }
   }
 }
 
-// ── Shoe placement ──
-function getVal(desktopId, mobileId) {
-  return parseFloat($(isMobile && mobileId ? mobileId : desktopId).value);
+// ── TF.js detector ──
+let detector = null;
+let tracking = false;
+let trackLoop = null;
+
+async function initDetector() {
+  log('Loading MoveNet…', 'b');
+  $('pill-track').textContent = 'loading model…';
+  try {
+    const model = poseDetection.SupportedModels.MoveNet;
+    detector = await poseDetection.createDetector(model, {
+      modelType: poseDetection.movenet.modelType.SINGLEPOSE_THUNDER,
+    });
+    log('MoveNet Thunder ready.', 'ok');
+    return true;
+  } catch(e) {
+    log('MoveNet failed, trying Lightning…', 'w');
+    try {
+      const model = poseDetection.SupportedModels.MoveNet;
+      detector = await poseDetection.createDetector(model, {
+        modelType: poseDetection.movenet.modelType.SINGLEPOSE_LIGHTNING,
+      });
+      log('MoveNet Lightning ready.', 'ok');
+      return true;
+    } catch(e2) {
+      log('Detector init failed: ' + e2.message, 'e');
+      return false;
+    }
+  }
 }
 
-function placeShoes(lms) {
-  if (!shoeL) return;
-  const sc = getVal('sl-sc', 'mob-sc');
-  const yO = getVal('sl-y',  'mob-y');
-  const zO = parseFloat($('sl-z').value);
-  const rY = getVal('sl-r',  'mob-r') * Math.PI / 180;
+async function runTracking() {
+  if (!detector || !S.tracking) return;
+  if (video.readyState < 2) { requestAnimationFrame(runTracking); return; }
 
-  placeOne(shoeL, lms, 'L', sc, yO, zO, rY);
-  if (S.bothFeet) placeOne(shoeR, lms, 'R', sc, yO, zO, rY);
-  else if (shoeR) shoeR.visible = false;
-}
+  try {
+    const poses = await detector.estimatePoses(video, {
+      flipHorizontal: S.mirror,
+    });
 
-function placeOne(model, lms, side, sc, yO, zO, rY) {
-  if (!model) return;
-  const ai = side==='L' ? LM.LA : LM.RA;
-  const hi = side==='L' ? LM.LH : LM.RH;
-  const fi = side==='L' ? LM.LF : LM.RF;
+    if (poses.length > 0) {
+      const kps = poses[0].keypoints;
+      // MoveNet returns x,y in pixel coords of the *input*
+      // but canvas may differ in size — scale kps to canvas size
+      const scaleX = canvas.width  / (video.videoWidth  || canvas.width);
+      const scaleY = canvas.height / (video.videoHeight || canvas.height);
+      const scaled = kps.map(kp => ({
+        ...kp, x: kp.x * scaleX, y: kp.y * scaleY
+      }));
 
-  const a = lms[ai], h = lms[hi], f = lms[fi];
-  if (!a || !h || !f || a.visibility < 0.15) { model.visible = false; return; }
+      const la = scaled[KP.L_ANKLE], ra = scaled[KP.R_ANKLE];
+      const lc = la?.score?.toFixed(2) ?? '—';
+      const rc = ra?.score?.toFixed(2) ?? '—';
+      $('m-lc').textContent = lc;
+      $('m-rc').textContent = rc;
+      const feetDetected = (la?.score > 0.2 ? 1 : 0) + (ra?.score > 0.2 ? 1 : 0);
+      $('m-feet').textContent = feetDetected;
 
-  function w(lm) {
-    return new THREE.Vector3(
-      (S.mirror ? 1 - lm.x : lm.x) * 2 - 1,
-      -(lm.y * 2 - 1),
-      -lm.z * 2
-    );
+      drawOverlay(scaled);
+      placeShoe(shoeL, scaled, 'L');
+      if (S.bothFeet) placeShoe(shoeR, scaled, 'R');
+      else clearShoes();
+
+      $('sb-txt').textContent = feetDetected + ' foot' + (feetDetected !== 1 ? 's' : '') + ' detected';
+    } else {
+      drawOverlay(null);
+      clearShoes();
+      $('sb-txt').textContent = 'no person detected';
+      $('m-lc').textContent = '—'; $('m-rc').textContent = '—'; $('m-feet').textContent = '0';
+    }
+  } catch(e) {
+    log('Detect error: ' + e.message, 'e');
   }
 
-  const wA = w(a), wH = w(h), wF = w(f);
-  const dir = new THREE.Vector3().subVectors(wF, wH).normalize();
-  const len = wH.distanceTo(wF);
-
-  const mid = new THREE.Vector3().addVectors(wH, wA).multiplyScalar(0.5);
-  mid.y += yO;
-  mid.z += zO;
-
-  const angle = Math.atan2(dir.x, dir.z) + rY;
-  const bs    = len * sc * 1.8;
-
-  model.visible = true;
-  model.position.copy(mid);
-  model.rotation.set(0, angle, 0);
-  model.scale.set(side==='R' ? -bs : bs, bs, bs);
+  if (S.tracking) trackLoop = setTimeout(runTracking, 30); // ~33fps cap
 }
 
 // ── Camera ──
@@ -922,38 +752,33 @@ async function startCam() {
         height: { ideal: isMobile ? 480 : 720 },
       }
     });
-    cam.srcObject = stream;
-    await cam.play();
+    video.srcObject = stream;
+    await video.play();
     S.camOn = true;
     idleEl.classList.add('gone');
-    scanEl.classList.add('on');
     $('pill-cam').textContent = 'camera on';
-    $('pill-cam').className   = 'hdr-pill ok';
+    $('pill-cam').className   = 'pill on';
     $('btn-cam-start').style.display = 'none';
-    $('btn-cam-stop').style.display  = 'flex';
+    $('btn-cam-stop').style.display  = '';
     setMobCam(true);
     updateTrackBtn();
-    log('Camera started.', 'ok');
+    log('Camera started (' + (video.videoWidth||'?') + '×' + (video.videoHeight||'?') + ').', 'ok');
   } catch(e) {
     log('Camera error: ' + e.message, 'e');
-    toast('Camera denied — check Safari settings');
+    toast('Camera denied — check browser settings');
+    $('pill-cam').textContent = 'denied';
+    $('pill-cam').className   = 'pill err';
   }
 }
 
 function stopCam() {
-  if (cam.srcObject) { cam.srcObject.getTracks().forEach(t => t.stop()); cam.srcObject = null; }
-  if (mpCam) { mpCam.stop(); mpCam = null; }
-  S.camOn = false; S.tracking = false;
-  clearShoes();
-  ctx.clearRect(0, 0, c2.width, c2.height);
+  if (video.srcObject) { video.srcObject.getTracks().forEach(t => t.stop()); video.srcObject = null; }
+  stopTracking();
+  S.camOn = false;
   idleEl.classList.remove('gone');
-  scanEl.classList.remove('on');
-  hudEl.classList.remove('on');
-  $('pill-cam').textContent = 'camera off';
-  $('pill-cam').className   = 'hdr-pill';
-  $('pill-track').textContent = 'not tracking';
-  $('pill-track').className   = 'hdr-pill';
-  $('btn-cam-start').style.display = 'flex';
+  $('pill-cam').textContent = 'no camera';
+  $('pill-cam').className   = 'pill';
+  $('btn-cam-start').style.display = '';
   $('btn-cam-stop').style.display  = 'none';
   setMobCam(false);
   updateTrackBtn();
@@ -962,68 +787,47 @@ function stopCam() {
 
 function setMobCam(on) {
   const b = $('mob-cam');
-  if (on) {
-    b.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/></svg> Stop';
-    b.classList.remove('btn-primary'); b.classList.add('btn-danger');
-  } else {
-    b.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg> Camera';
-    b.classList.add('btn-primary'); b.classList.remove('btn-danger');
-  }
+  if (on) { b.textContent = '■ Stop'; b.classList.remove('primary'); b.classList.add('danger'); }
+  else    { b.textContent = '▶ Camera'; b.classList.add('primary'); b.classList.remove('danger'); }
 }
 
 // ── Tracking ──
 function updateTrackBtn() {
   const ok = S.camOn && S.modelLoaded;
-  $('btn-track').disabled   = !ok;
-  $('mob-track').disabled   = !ok;
+  $('btn-track').disabled  = !ok;
+  $('mob-track').disabled  = !ok;
+}
+
+async function startTracking() {
+  if (!detector) {
+    const ok = await initDetector();
+    if (!ok) { toast('Failed to load tracking model'); return; }
+  }
+  S.tracking = true;
+  statusEl.classList.add('on');
+  $('pill-track').textContent = 'tracking';
+  $('pill-track').className   = 'pill live';
+  $('btn-track').textContent  = '⏸ Pause';
+  $('mob-track').textContent  = '⏸ Pause';
+  log('Tracking started.', 'ok');
+  runTracking();
+}
+
+function stopTracking() {
+  S.tracking = false;
+  if (trackLoop) { clearTimeout(trackLoop); trackLoop = null; }
+  clearShoes();
+  drawOverlay(null);
+  statusEl.classList.remove('on');
+  $('pill-track').textContent = 'paused';
+  $('pill-track').className   = 'pill';
+  $('btn-track').textContent  = '▶ Start Tracking';
+  $('mob-track').textContent  = '▶ Track';
+  log('Tracking paused.', 'w');
 }
 
 function toggleTrack() {
-  if (!S.tracking) {
-    S.tracking = true;
-    $('btn-track').textContent  = '⏸ Pause Tracking';
-    $('mob-track').textContent  = '⏸ Pause';
-    $('pill-track').textContent = 'tracking';
-    $('pill-track').className   = 'hdr-pill live';
-    hudEl.classList.add('on');
-    log('Tracking started.', 'ok');
-    startMP();
-  } else {
-    S.tracking = false;
-    if (mpCam) { mpCam.stop(); mpCam = null; }
-    clearShoes();
-    ctx.clearRect(0, 0, c2.width, c2.height);
-    hudEl.classList.remove('on');
-    $('btn-track').textContent  = '▶ Start Tracking';
-    $('mob-track').textContent  = '▶ Track';
-    $('pill-track').textContent = 'paused';
-    $('pill-track').className   = 'hdr-pill';
-    log('Tracking paused.', 'w');
-  }
-}
-
-function startMP() {
-  if (!pose) initPose();
-  pose.setOptions({
-    minDetectionConfidence: +$('sl-det').value,
-    minTrackingConfidence:  +$('sl-trk').value,
-  });
-
-  function launchCamera() {
-    mpCam = new Camera(cam, {
-      onFrame: async () => { if (S.tracking) await pose.send({ image: cam }); },
-      width:  isMobile ? 640 : 1280,
-      height: isMobile ? 480 : 720,
-    });
-    mpCam.start();
-    log('MediaPipe loop running.', 'ok');
-  }
-
-  if (cam.readyState >= 2) {
-    launchCamera();
-  } else {
-    cam.addEventListener('canplay', launchCamera, { once: true });
-  }
+  S.tracking ? stopTracking() : startTracking();
 }
 
 // ── Screenshot ──
@@ -1032,51 +836,36 @@ function screenshot() {
   const vp  = $('vp');
   out.width = vp.clientWidth; out.height = vp.clientHeight;
   const cx = out.getContext('2d');
-  cx.drawImage(cam,   0, 0, out.width, out.height);
-  cx.drawImage(c3,    0, 0);
-  cx.drawImage(c2,    0, 0);
+  cx.drawImage(video, 0, 0, out.width, out.height);
+  // draw Three.js canvas
+  const c3 = $('vp').querySelector('canvas:last-child');
+  if (c3) cx.drawImage(c3, 0, 0);
+  cx.drawImage(canvas, 0, 0);
   const a = document.createElement('a');
   a.href = out.toDataURL('image/png');
-  a.download = 'ar-tryon-' + Date.now() + '.png';
+  a.download = 'shoe-ar-' + Date.now() + '.png';
   a.click();
   toast('Screenshot saved 📷');
 }
 
-// ── Reset ──
-function doReset() {
-  [['sl-sc','1.0','v-sc','1.00'],
-   ['sl-y','0','v-y','0.00'],
-   ['sl-z','0','v-z','0.00'],
-   ['sl-r','0','v-r','0°'],
-   ['mob-sc','1.0','mob-v-sc','1.00'],
-   ['mob-y','0','mob-v-y','0.00'],
-   ['mob-r','0','mob-v-r','0°']
-  ].forEach(([sl,val,vl,display]) => {
-    if ($(sl)) $(sl).value = val;
-    if ($(vl)) $(vl).textContent = display;
-  });
-  toast('Reset ✓');
-}
-
 // ── Toggles ──
-function bindTog(id, prop) {
+function bindTog(id, prop, cb) {
   const el = $(id); if (!el) return;
   el.addEventListener('click', () => {
     S[prop] = !S[prop];
     el.classList.toggle('on', S[prop]);
-    if (prop === 'bothFeet' && shoeR && !S[prop]) shoeR.visible = false;
+    if (cb) cb();
   });
 }
 
-// ── Slider sync (desktop ↔ mobile) ──
+// ── Slider sync desktop ↔ mobile ──
 function syncSliders(dId, mId, dVId, mVId, fmt) {
   const d = $(dId), m = $(mId), dv = $(dVId), mv = $(mVId);
-  function upd(src, dst, valEl) {
+  const upd = (src, dst, valEl) => {
     const v = parseFloat(src.value);
     if (dst) dst.value = v;
-    const txt = fmt ? fmt(v) : v.toFixed(2);
-    if (valEl) valEl.textContent = txt;
-  }
+    if (valEl) valEl.textContent = fmt ? fmt(v) : v.toFixed(2);
+  };
   if (d) d.addEventListener('input', () => upd(d, m, dv));
   if (m) m.addEventListener('input', () => upd(m, d, mv));
 }
@@ -1084,57 +873,44 @@ function syncSliders(dId, mId, dVId, mVId, fmt) {
 // ── Init ──
 document.addEventListener('DOMContentLoaded', () => {
   initThree();
-  initPose();
 
-  // Camera
   $('btn-cam-start').addEventListener('click', startCam);
   $('btn-cam-stop').addEventListener('click', stopCam);
   $('mob-cam').addEventListener('click', () => S.camOn ? stopCam() : startCam());
 
-  // Tracking
   $('btn-track').addEventListener('click', toggleTrack);
   $('mob-track').addEventListener('click', toggleTrack);
 
-  // Screenshot
-  $('btn-screenshot').addEventListener('click', screenshot);
+  $('btn-shot').addEventListener('click', screenshot);
   $('mob-shot').addEventListener('click', screenshot);
 
-  // Reset
-  $('btn-reset').addEventListener('click', doReset);
-  $('btn-reset-f').addEventListener('click', doReset);
+  ['btn-reset','btn-reset-f'].forEach(id => $(id)?.addEventListener('click', () => {
+    [['sl-sc','1.0','v-sc'],[' sl-y','0','v-y'],['sl-z','0','v-z'],['sl-r','0','v-r'],
+     ['mob-sc','1.0','mob-v-sc'],['mob-y','0','mob-v-y'],['mob-r','0','mob-v-r']]
+      .forEach(([sl,val,vl]) => { if($(sl)){$(sl).value=val;} if($(vl)){$(vl).textContent=sl.includes('-r')?'0°':parseFloat(val).toFixed(2);} });
+    toast('Reset ✓');
+  }));
 
-  // GLB upload (desktop)
   $('glb-input').addEventListener('change', e => {
-    if (e.target.files[0]) {
-      const url = URL.createObjectURL(e.target.files[0]);
-      loadGLBUrl(url, e.target.files[0].name);
-    }
+    if (e.target.files[0]) loadGLB(URL.createObjectURL(e.target.files[0]), e.target.files[0].name);
   });
-
-  // GLB upload (mobile)
   $('mob-glb-input').addEventListener('change', e => {
-    if (e.target.files[0]) {
-      const url = URL.createObjectURL(e.target.files[0]);
-      loadGLBUrl(url, e.target.files[0].name);
-    }
+    if (e.target.files[0]) loadGLB(URL.createObjectURL(e.target.files[0]), e.target.files[0].name);
   });
 
-  // Toggles
   bindTog('tog-sk', 'showSkel');
   bindTog('tog-lm', 'showLM');
-  bindTog('tog-bf', 'bothFeet');
+  bindTog('tog-bf', 'bothFeet', () => { if (!S.bothFeet && shoeR) shoeR.visible = false; });
+  bindTog('tog-mir', 'mirror');
 
-  // Synced sliders
   syncSliders('sl-sc', 'mob-sc', 'v-sc', 'mob-v-sc', v => v.toFixed(2));
   syncSliders('sl-y',  'mob-y',  'v-y',  'mob-v-y',  v => v.toFixed(2));
   syncSliders('sl-r',  'mob-r',  'v-r',  'mob-v-r',  v => Math.round(v) + '°');
 
-  // Desktop-only sliders
   $('sl-z').addEventListener('input', () => { $('v-z').textContent = parseFloat($('sl-z').value).toFixed(2); });
-  $('sl-det').addEventListener('input', () => { $('v-det').textContent = parseFloat($('sl-det').value).toFixed(2); });
-  $('sl-trk').addEventListener('input', () => { $('v-trk').textContent = parseFloat($('sl-trk').value).toFixed(2); });
 
   resize();
+  log('Ready. Upload a .glb and start camera.', 'ok');
 });
 </script>
 </body>
