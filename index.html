@@ -716,6 +716,23 @@ function loadGLBUrl(url, name) {
     $('chip-name').textContent = 'Not found';
     $('chip-sub').textContent = 'Upload a .glb below';
     log('Auto-load failed — use the upload zone.', 'w');
+    // Create a simple placeholder box so tracking can still be enabled
+    const geo = new THREE.BoxGeometry(0.15, 0.08, 0.3);
+    const mat = new THREE.MeshStandardMaterial({ color: 0x0066ff, opacity: 0.6, transparent: true });
+    shoeL = new THREE.Mesh(geo, mat);
+    shoeL.visible = false;
+    scene.add(shoeL);
+    shoeR = shoeL.clone();
+    shoeR.visible = false;
+    scene.add(shoeR);
+    S.modelLoaded = true;
+    $('chip-dot').className = 'chip-dot loaded';
+    $('chip-name').textContent = 'placeholder box';
+    $('chip-sub').textContent = 'upload a .glb to replace';
+    $('pill-model').textContent = 'placeholder';
+    $('pill-model').className = 'hdr-pill ok';
+    updateTrackBtn();
+    log('Using placeholder box — upload a .glb to use a real shoe.', 'w');
   });
 }
 
@@ -822,7 +839,7 @@ function drawOverlay(lms) {
     ctx.strokeStyle = 'rgba(0,102,255,0.6)';
     for (const [a, b] of SEGS) {
       const la = lms[a], lb = lms[b];
-      if (!la || !lb || la.visibility < 0.3 || lb.visibility < 0.3) continue;
+      if (!la || !lb || la.visibility < 0.1 || lb.visibility < 0.1) continue;
       const pa = px(la), pb = px(lb);
       ctx.beginPath();
       ctx.moveTo(pa.x, pa.y);
@@ -834,7 +851,7 @@ function drawOverlay(lms) {
   if (S.showLM) {
     for (const idx of Object.values(LM)) {
       const lm = lms[idx];
-      if (!lm || lm.visibility < 0.3) continue;
+      if (!lm || lm.visibility < 0.1) continue;
       const p = px(lm);
       ctx.beginPath();
       ctx.arc(p.x, p.y, isMobile ? 5 : 4, 0, Math.PI * 2);
@@ -868,7 +885,7 @@ function placeOne(model, lms, side, sc, yO, zO, rY) {
   const fi = side==='L' ? LM.LF : LM.RF;
 
   const a = lms[ai], h = lms[hi], f = lms[fi];
-  if (!a || !h || !f || a.visibility < 0.4) { model.visible = false; return; }
+  if (!a || !h || !f || a.visibility < 0.15) { model.visible = false; return; }
 
   function w(lm) {
     return new THREE.Vector3(
@@ -906,6 +923,7 @@ async function startCam() {
       }
     });
     cam.srcObject = stream;
+    await cam.play();
     S.camOn = true;
     idleEl.classList.add('gone');
     scanEl.classList.add('on');
@@ -990,13 +1008,22 @@ function startMP() {
     minDetectionConfidence: +$('sl-det').value,
     minTrackingConfidence:  +$('sl-trk').value,
   });
-  mpCam = new Camera(cam, {
-    onFrame: async () => { if (S.tracking) await pose.send({ image: cam }); },
-    width:  isMobile ? 640 : 1280,
-    height: isMobile ? 480 : 720,
-  });
-  mpCam.start();
-  log('MediaPipe loop running.', 'ok');
+
+  function launchCamera() {
+    mpCam = new Camera(cam, {
+      onFrame: async () => { if (S.tracking) await pose.send({ image: cam }); },
+      width:  isMobile ? 640 : 1280,
+      height: isMobile ? 480 : 720,
+    });
+    mpCam.start();
+    log('MediaPipe loop running.', 'ok');
+  }
+
+  if (cam.readyState >= 2) {
+    launchCamera();
+  } else {
+    cam.addEventListener('canplay', launchCamera, { once: true });
+  }
 }
 
 // ── Screenshot ──
