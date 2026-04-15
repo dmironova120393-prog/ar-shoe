@@ -1,0 +1,1114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#000000">
+<title>AR Shoe Try-On</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+:root {
+  --black: #000;
+  --white: #fff;
+  --off: #f5f3ef;
+  --ink: #111;
+  --muted: #888;
+  --line: rgba(0,0,0,0.1);
+  --accent: #ff3c00;
+  --accent2: #0066ff;
+  --green: #00c853;
+  --panel: 300px;
+  --hdr: 56px;
+  --ftr: 64px;
+}
+
+html,body {
+  height: 100%;
+  background: var(--off);
+  color: var(--ink);
+  font-family: 'Space Grotesk', sans-serif;
+  overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ── LAYOUT ── */
+#app {
+  height: 100vh;
+  display: grid;
+  grid-template-rows: var(--hdr) 1fr var(--ftr);
+  grid-template-columns: var(--panel) 1fr var(--panel);
+}
+
+/* ── HEADER ── */
+header {
+  grid-column: 1/-1;
+  display: flex;
+  align-items: center;
+  padding: 0 24px;
+  border-bottom: 1px solid var(--line);
+  background: var(--white);
+  gap: 20px;
+}
+
+.logo {
+  font-family: 'Space Mono', monospace;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  text-transform: uppercase;
+}
+.logo em { color: var(--accent); font-style: normal; }
+
+.hdr-pill {
+  background: var(--off);
+  border: 1px solid var(--line);
+  border-radius: 100px;
+  padding: 4px 12px;
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  color: var(--muted);
+  letter-spacing: 0.05em;
+}
+.hdr-pill.ok { background: #e6f9ed; border-color: #b3ecc9; color: #1a7f3c; }
+.hdr-pill.live { background: #fff0eb; border-color: #ffc4ad; color: var(--accent); }
+
+.hdr-right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+
+/* ── PANELS ── */
+#panel-l, #panel-r {
+  background: var(--white);
+  border-right: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+#panel-r { border-right: none; border-left: 1px solid var(--line); }
+
+.panel-inner { flex: 1; overflow-y: auto; padding: 20px 18px; display: flex; flex-direction: column; gap: 22px; }
+.panel-inner::-webkit-scrollbar { width: 0; }
+
+.p-block { display: flex; flex-direction: column; gap: 10px; }
+.p-label {
+  font-family: 'Space Mono', monospace;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding-bottom: 2px;
+  border-bottom: 1px solid var(--line);
+}
+
+/* ── VIEWPORT ── */
+#vp {
+  position: relative;
+  background: #000;
+  overflow: hidden;
+}
+
+#cam {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  object-fit: cover;
+  transform: none; /* NO mirror — iPhone back camera */
+}
+
+#canvas3d, #canvas2d {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  pointer-events: none;
+}
+
+/* idle state */
+#idle {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 16px;
+  background: var(--ink);
+  transition: opacity 0.4s;
+  z-index: 5;
+}
+#idle.gone { opacity: 0; pointer-events: none; }
+
+.idle-ring {
+  width: 72px; height: 72px;
+  border: 1.5px solid rgba(255,255,255,0.15);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+}
+.idle-ring svg { width: 30px; height: 30px; stroke: rgba(255,255,255,0.3); fill: none; }
+.idle-h { font-family: 'Space Mono', monospace; font-size: 15px; color: #fff; font-weight: 700; letter-spacing: -0.02em; }
+.idle-p { font-size: 12px; color: rgba(255,255,255,0.4); text-align: center; line-height: 1.7; max-width: 220px; }
+
+/* scan overlay */
+@keyframes scan { 0% { top: -2px; } 100% { top: 100%; } }
+#scanline {
+  position: absolute; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg, transparent 0%, var(--accent2) 50%, transparent 100%);
+  opacity: 0; pointer-events: none;
+  animation: scan 3s linear infinite;
+}
+#scanline.on { opacity: 0.4; }
+
+/* corner marks */
+.corner {
+  position: absolute; width: 18px; height: 18px;
+  pointer-events: none;
+}
+.corner::before, .corner::after { content: ''; position: absolute; background: rgba(255,255,255,0.5); }
+.corner.tl { top: 16px; left: 16px; }
+.corner.tl::before { top:0;left:0;width:100%;height:1px; }
+.corner.tl::after  { top:0;left:0;width:1px;height:100%; }
+.corner.tr { top: 16px; right: 16px; }
+.corner.tr::before { top:0;right:0;width:100%;height:1px; }
+.corner.tr::after  { top:0;right:0;width:1px;height:100%; }
+.corner.bl { bottom: 16px; left: 16px; }
+.corner.bl::before { bottom:0;left:0;width:100%;height:1px; }
+.corner.bl::after  { bottom:0;left:0;width:1px;height:100%; }
+.corner.br { bottom: 16px; right: 16px; }
+.corner.br::before { bottom:0;right:0;width:100%;height:1px; }
+.corner.br::after  { bottom:0;right:0;width:1px;height:100%; }
+
+/* vp HUD */
+#hud {
+  position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%);
+  display: flex; gap: 8px; align-items: center;
+  background: rgba(0,0,0,0.55); border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 100px; padding: 5px 14px;
+  backdrop-filter: blur(8px);
+  pointer-events: none; opacity: 0; transition: opacity 0.4s;
+  white-space: nowrap;
+}
+#hud.on { opacity: 1; }
+.hud-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--green); box-shadow: 0 0 4px var(--green); }
+.hud-txt { font-family: 'Space Mono', monospace; font-size: 10px; color: rgba(255,255,255,0.7); }
+
+/* ── FOOTER ── */
+footer {
+  grid-column: 1/-1;
+  border-top: 1px solid var(--line);
+  background: var(--white);
+  display: flex; align-items: center;
+  padding: 0 24px; gap: 10px;
+}
+.ftr-r { margin-left: auto; font-family: 'Space Mono', monospace; font-size: 9px; color: var(--muted); letter-spacing: 0.05em; }
+
+/* ── BUTTONS ── */
+.btn {
+  display: flex; align-items: center; justify-content: center; gap: 7px;
+  padding: 0 16px; height: 40px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--off);
+  color: var(--ink);
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 13px; font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+  width: 100%;
+  -webkit-appearance: none;
+}
+.btn:active { transform: scale(0.97); }
+.btn svg { width: 13px; height: 13px; flex-shrink: 0; }
+.btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+.btn-primary { background: var(--ink); color: #fff; border-color: var(--ink); }
+.btn-primary:hover { background: #222; }
+.btn-accent { background: var(--accent); color: #fff; border-color: var(--accent); }
+.btn-ghost { background: transparent; }
+.btn-danger { border-color: #ffb3a3; color: var(--accent); background: #fff5f2; }
+.btn-sm { height: 34px; font-size: 12px; padding: 0 12px; }
+
+/* ── MODEL CHIP ── */
+.model-chip {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 12px 14px;
+  display: flex; flex-direction: column; gap: 6px;
+  background: var(--off);
+}
+.chip-top { display: flex; align-items: center; gap: 8px; }
+.chip-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--line); flex-shrink: 0; transition: background 0.3s; }
+.chip-dot.loaded { background: var(--green); box-shadow: 0 0 5px var(--green); }
+.chip-dot.loading { background: #ffb300; animation: pulse 1s infinite; }
+@keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.3; } }
+.chip-name { font-family: 'Space Mono', monospace; font-size: 11px; font-weight: 700; color: var(--ink); }
+.chip-sub { font-family: 'Space Mono', monospace; font-size: 9px; color: var(--muted); }
+
+/* ── FILE UPLOAD ── */
+.upload-zone {
+  border: 1.5px dashed var(--line);
+  border-radius: 10px; padding: 16px 12px;
+  text-align: center; cursor: pointer;
+  transition: border-color 0.2s;
+  position: relative;
+}
+.upload-zone:hover { border-color: rgba(0,0,0,0.25); }
+.upload-zone.has { border-style: solid; border-color: var(--green); }
+.upload-zone input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.upload-icon { font-size: 20px; margin-bottom: 5px; }
+.upload-txt { font-size: 11px; color: var(--muted); font-family: 'Space Mono', monospace; line-height: 1.5; }
+.upload-file { font-size: 10px; color: var(--green); margin-top: 4px; font-family: 'Space Mono', monospace; word-break: break-all; }
+
+/* ── SLIDERS ── */
+.sl-row { display: flex; flex-direction: column; gap: 5px; }
+.sl-top { display: flex; justify-content: space-between; align-items: center; }
+.sl-name { font-size: 12px; color: var(--ink); }
+.sl-val { font-family: 'Space Mono', monospace; font-size: 10px; color: var(--accent); min-width: 36px; text-align: right; }
+
+input[type=range] {
+  -webkit-appearance: none;
+  width: 100%; height: 2px;
+  background: var(--line);
+  border-radius: 1px; outline: none; cursor: pointer;
+}
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  background: var(--ink); border: none; cursor: pointer;
+}
+
+/* ── TOGGLES ── */
+.tog-row { display: flex; align-items: center; justify-content: space-between; padding: 2px 0; }
+.tog-label { font-size: 12px; color: var(--ink); }
+.tog {
+  width: 34px; height: 18px;
+  border-radius: 9px;
+  background: var(--line); border: none;
+  cursor: pointer; position: relative;
+  transition: background 0.2s; flex-shrink: 0;
+}
+.tog.on { background: var(--ink); }
+.tog::after {
+  content: ''; position: absolute;
+  width: 12px; height: 12px;
+  border-radius: 50%; background: #fff;
+  top: 3px; left: 3px;
+  transition: transform 0.2s;
+}
+.tog.on::after { transform: translateX(16px); }
+
+/* ── METRICS ── */
+.metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.m-card {
+  background: var(--off); border-radius: 8px;
+  padding: 10px; border: 1px solid var(--line);
+}
+.m-lbl { font-family: 'Space Mono', monospace; font-size: 8px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; }
+.m-val { font-size: 20px; font-weight: 600; color: var(--ink); margin-top: 2px; font-variant-numeric: tabular-nums; }
+.m-val.g { color: var(--green); }
+.m-val.b { color: var(--accent2); }
+.m-val.r { color: var(--accent); }
+
+/* ── LOG ── */
+#log { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 2px; padding: 12px 14px; background: var(--off); }
+#log::-webkit-scrollbar { width: 0; }
+.le { font-family: 'Space Mono', monospace; font-size: 9px; color: var(--muted); padding: 2px 0; line-height: 1.5; }
+.le.ok { color: var(--green); }
+.le.w  { color: #c07000; }
+.le.e  { color: var(--accent); }
+.p-label.log-lbl { margin: 0; border-bottom: none; padding: 14px 14px 8px; }
+
+/* ── TOAST ── */
+#toast {
+  position: fixed; bottom: 80px; left: 50%;
+  transform: translateX(-50%) translateY(12px);
+  background: var(--ink); color: #fff;
+  border-radius: 100px; padding: 8px 18px;
+  font-size: 12px; font-family: 'Space Mono', monospace;
+  opacity: 0; pointer-events: none;
+  transition: all 0.25s; z-index: 999; white-space: nowrap;
+}
+#toast.on { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ── LOADING ── */
+#loader {
+  position: fixed; inset: 0;
+  background: var(--ink);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 20px;
+  z-index: 1000; transition: opacity 0.5s;
+}
+#loader.gone { opacity: 0; pointer-events: none; }
+.ld-logo { font-family: 'Space Mono', monospace; font-size: 18px; color: #fff; font-weight: 700; letter-spacing: -0.03em; }
+.ld-logo em { color: var(--accent); font-style: normal; }
+.ld-bar-bg { width: 200px; height: 1px; background: rgba(255,255,255,0.15); }
+.ld-bar { height: 1px; background: var(--white); width: 0%; transition: width 0.4s; }
+.ld-msg { font-family: 'Space Mono', monospace; font-size: 10px; color: rgba(255,255,255,0.4); }
+
+/* ── MOBILE ── */
+@media (max-width: 720px) {
+  :root { --panel: 0px; }
+  #panel-l, #panel-r { display: none; }
+  #mob { display: flex !important; }
+  footer .ftr-r { display: none; }
+  #app { grid-template-columns: 1fr; grid-template-rows: var(--hdr) 1fr auto var(--ftr); }
+}
+
+#mob {
+  display: none;
+  flex-direction: column;
+  gap: 0;
+  background: var(--white);
+  border-top: 1px solid var(--line);
+}
+.mob-btns {
+  display: flex; gap: 8px; padding: 12px 14px;
+}
+.mob-sliders {
+  display: flex; flex-direction: column; gap: 8px;
+  padding: 0 14px 12px;
+  border-top: 1px solid var(--line);
+}
+.mob-sl { display: flex; align-items: center; gap: 10px; padding-top: 8px; }
+.mob-sl-lbl { font-family: 'Space Mono', monospace; font-size: 9px; color: var(--muted); width: 52px; flex-shrink: 0; }
+.mob-sl-val { font-family: 'Space Mono', monospace; font-size: 9px; color: var(--accent); width: 28px; text-align: right; flex-shrink: 0; }
+
+/* footer btns */
+.f-btn {
+  display: flex; align-items: center; gap: 6px;
+  padding: 0 16px; height: 38px;
+  border-radius: 7px; border: 1px solid var(--line);
+  background: transparent; color: var(--ink);
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 12px; font-weight: 500; cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+  -webkit-appearance: none;
+}
+.f-btn:active { transform: scale(0.97); }
+.f-btn svg { width: 12px; height: 12px; }
+.f-btn.acc { background: var(--ink); color: #fff; border-color: var(--ink); }
+</style>
+</head>
+<body>
+
+<div id="loader">
+  <div class="ld-logo">AR <em>/</em> SHOE</div>
+  <div class="ld-bar-bg"><div class="ld-bar" id="ld-bar"></div></div>
+  <div class="ld-msg" id="ld-msg">Starting up…</div>
+</div>
+
+<div id="toast"></div>
+
+<div id="app">
+
+  <!-- HEADER -->
+  <header>
+    <div class="logo">AR <em>/</em> SHOE</div>
+    <div class="hdr-pill" id="pill-cam">camera off</div>
+    <div class="hdr-pill" id="pill-model">no model</div>
+    <div class="hdr-pill" id="pill-track">not tracking</div>
+    <div class="hdr-right">
+      <button class="f-btn" id="btn-screenshot" title="Screenshot">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="12" cy="12" r="4"/></svg>
+        Save
+      </button>
+    </div>
+  </header>
+
+  <!-- LEFT PANEL -->
+  <aside id="panel-l">
+    <div class="panel-inner">
+
+      <div class="p-block">
+        <div class="p-label">Camera</div>
+        <button class="btn btn-primary" id="btn-cam-start">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+          Start Camera
+        </button>
+        <button class="btn btn-danger" id="btn-cam-stop" style="display:none">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+          Stop Camera
+        </button>
+      </div>
+
+      <div class="p-block">
+        <div class="p-label">3D Model</div>
+        <div class="model-chip" id="model-chip">
+          <div class="chip-top">
+            <div class="chip-dot loading" id="chip-dot"></div>
+            <span class="chip-name" id="chip-name">Loading model…</span>
+          </div>
+          <div class="chip-sub" id="chip-sub">waiting for shoe.glb</div>
+        </div>
+        <div class="upload-zone" id="upload-zone">
+          <input type="file" id="glb-input" accept=".glb,.gltf">
+          <div class="upload-icon">📦</div>
+          <div class="upload-txt">Drop a different .glb here<br>or tap to browse</div>
+          <div class="upload-file" id="upload-name" style="display:none"></div>
+        </div>
+      </div>
+
+      <div class="p-block">
+        <div class="p-label">Tracking</div>
+        <button class="btn" id="btn-track" disabled>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>
+          Start Tracking
+        </button>
+      </div>
+
+      <div class="p-block">
+        <div class="p-label">Detection Settings</div>
+        <div class="sl-row">
+          <div class="sl-top"><span class="sl-name">Min Detection</span><span class="sl-val" id="v-det">0.35</span></div>
+          <input type="range" id="sl-det" min="0.1" max="1" step="0.05" value="0.35">
+        </div>
+        <div class="sl-row">
+          <div class="sl-top"><span class="sl-name">Min Tracking</span><span class="sl-val" id="v-trk">0.35</span></div>
+          <input type="range" id="sl-trk" min="0.1" max="1" step="0.05" value="0.35">
+        </div>
+      </div>
+
+    </div>
+
+    <!-- LOG -->
+    <div class="p-label log-lbl">Log</div>
+    <div id="log"></div>
+  </aside>
+
+  <!-- VIEWPORT -->
+  <main id="vp">
+    <video id="cam" autoplay playsinline muted></video>
+    <canvas id="canvas3d"></canvas>
+    <canvas id="canvas2d"></canvas>
+
+    <div class="corner tl"></div>
+    <div class="corner tr"></div>
+    <div class="corner bl"></div>
+    <div class="corner br"></div>
+    <div id="scanline"></div>
+
+    <div id="hud">
+      <div class="hud-dot"></div>
+      <span class="hud-txt" id="hud-txt">tracking feet…</span>
+    </div>
+
+    <div id="idle">
+      <div class="idle-ring">
+        <svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+      </div>
+      <div class="idle-h">AR Try-On</div>
+      <div class="idle-p">Start camera, then tap<br>Start Tracking to see your shoes</div>
+    </div>
+  </main>
+
+  <!-- RIGHT PANEL -->
+  <aside id="panel-r">
+    <div class="panel-inner">
+
+      <div class="p-block">
+        <div class="p-label">Shoe Fit</div>
+        <div class="sl-row">
+          <div class="sl-top"><span class="sl-name">Scale</span><span class="sl-val" id="v-sc">1.00</span></div>
+          <input type="range" id="sl-sc" min="0.2" max="3" step="0.05" value="1.0">
+        </div>
+        <div class="sl-row">
+          <div class="sl-top"><span class="sl-name">Height (Y)</span><span class="sl-val" id="v-y">0.00</span></div>
+          <input type="range" id="sl-y" min="-0.5" max="0.5" step="0.01" value="0">
+        </div>
+        <div class="sl-row">
+          <div class="sl-top"><span class="sl-name">Depth (Z)</span><span class="sl-val" id="v-z">0.00</span></div>
+          <input type="range" id="sl-z" min="-0.5" max="0.5" step="0.01" value="0">
+        </div>
+        <div class="sl-row">
+          <div class="sl-top"><span class="sl-name">Rotation</span><span class="sl-val" id="v-r">0°</span></div>
+          <input type="range" id="sl-r" min="-180" max="180" step="1" value="0">
+        </div>
+        <button class="btn btn-ghost btn-sm" id="btn-reset">↺ Reset transform</button>
+      </div>
+
+      <div class="p-block">
+        <div class="p-label">Render</div>
+        <div class="tog-row"><span class="tog-label">Show skeleton</span><div class="tog on" id="tog-sk"></div></div>
+        <div class="tog-row"><span class="tog-label">Show landmarks</span><div class="tog on" id="tog-lm"></div></div>
+        <div class="tog-row"><span class="tog-label">Both feet</span><div class="tog on" id="tog-bf"></div></div>
+      </div>
+
+      <div class="p-block">
+        <div class="p-label">Live Metrics</div>
+        <div class="metrics">
+          <div class="m-card"><div class="m-lbl">FPS</div><div class="m-val g" id="m-fps">—</div></div>
+          <div class="m-card"><div class="m-lbl">Confidence</div><div class="m-val b" id="m-conf">—</div></div>
+          <div class="m-card"><div class="m-lbl">Feet</div><div class="m-val" id="m-feet">—</div></div>
+          <div class="m-card"><div class="m-lbl">Points</div><div class="m-val" id="m-pts">—</div></div>
+        </div>
+      </div>
+
+    </div>
+  </aside>
+
+  <!-- MOBILE CONTROLS -->
+  <div id="mob">
+    <div class="mob-btns">
+      <button class="btn btn-primary" id="mob-cam" style="flex:1">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+        Camera
+      </button>
+      <button class="btn" id="mob-track" disabled style="flex:1">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>
+        Track
+      </button>
+      <button class="btn btn-ghost btn-sm" id="mob-shot" style="width:42px;flex-shrink:0;padding:0">📷</button>
+      <button class="btn btn-ghost btn-sm" id="mob-glb" style="width:42px;flex-shrink:0;padding:0" title="Load GLB">
+        📦
+        <input type="file" id="mob-glb-input" accept=".glb,.gltf" style="position:absolute;inset:0;opacity:0;cursor:pointer">
+      </button>
+    </div>
+    <div class="mob-sliders">
+      <div class="mob-sl">
+        <span class="mob-sl-lbl">Scale</span>
+        <input type="range" id="mob-sc" min="0.2" max="3" step="0.05" value="1.0" style="flex:1">
+        <span class="mob-sl-val" id="mob-v-sc">1.00</span>
+      </div>
+      <div class="mob-sl">
+        <span class="mob-sl-lbl">Height Y</span>
+        <input type="range" id="mob-y" min="-0.5" max="0.5" step="0.01" value="0" style="flex:1">
+        <span class="mob-sl-val" id="mob-v-y">0.00</span>
+      </div>
+      <div class="mob-sl">
+        <span class="mob-sl-lbl">Rotate</span>
+        <input type="range" id="mob-r" min="-180" max="180" step="1" value="0" style="flex:1">
+        <span class="mob-sl-val" id="mob-v-r">0°</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <footer>
+    <button class="f-btn" id="btn-reset-f">↺ Reset</button>
+    <div class="ftr-r">MediaPipe Pose · Three.js r148 · WebAR</div>
+  </footer>
+
+</div>
+
+<!-- LIBS -->
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5.1675469404/pose.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3.1675466862/camera_utils.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.148.0/build/three.min.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.148.0/examples/js/loaders/GLTFLoader.js" crossorigin="anonymous"></script>
+
+<script>
+// ── Device detection ──
+const isIOS    = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const isMobile = window.innerWidth <= 720 || isIOS;
+
+// ── State ──
+const S = {
+  camOn: false, tracking: false, modelLoaded: false,
+  mirror: false,   // back camera = no mirror
+  showSkel: true, showLM: true, bothFeet: true,
+  fps: 0, fpsF: 0, fpsT: performance.now(),
+};
+
+// ── DOM shortcuts ──
+const $  = id => document.getElementById(id);
+const cam         = $('cam');
+const c3          = $('canvas3d');
+const c2          = $('canvas2d');
+const ctx         = c2.getContext('2d');
+const idleEl      = $('idle');
+const scanEl      = $('scanline');
+const hudEl       = $('hud');
+
+// ── Logging ──
+function log(msg, t='') {
+  const el = document.createElement('div');
+  el.className = 'le ' + t;
+  el.textContent = '[' + new Date().toTimeString().slice(0,8) + '] ' + msg;
+  $('log').appendChild(el);
+  $('log').scrollTop = $('log').scrollHeight;
+  if ($('log').children.length > 60) $('log').firstChild.remove();
+}
+function toast(msg) {
+  const t = $('toast'); t.textContent = msg; t.classList.add('on');
+  setTimeout(() => t.classList.remove('on'), 2400);
+}
+
+// ── Loading ──
+function setLoad(pct, msg) {
+  $('ld-bar').style.width = pct + '%';
+  $('ld-msg').textContent = msg;
+}
+setLoad(15, 'Loading MediaPipe…');
+setTimeout(() => setLoad(45, 'Loading Three.js…'), 300);
+setTimeout(() => setLoad(75, 'Initialising renderer…'), 700);
+setTimeout(() => setLoad(95, 'Auto-loading shoe model…'), 1100);
+setTimeout(() => {
+  $('loader').classList.add('gone');
+  log('Ready. ' + (isIOS ? 'iPhone detected — back camera mode.' : 'Desktop mode.'), 'ok');
+  autoLoad();
+}, 1600);
+
+// ── Resize ──
+function resize() {
+  const vp = $('vp');
+  c2.width = c3.width = vp.clientWidth;
+  c2.height = c3.height = vp.clientHeight;
+  if (renderer) {
+    renderer.setSize(vp.clientWidth, vp.clientHeight);
+    cam3d.aspect = vp.clientWidth / vp.clientHeight;
+    cam3d.updateProjectionMatrix();
+  }
+}
+window.addEventListener('resize', resize);
+
+// ── Three.js ──
+let renderer, scene, cam3d, shoeL = null, shoeR = null;
+
+function initThree() {
+  renderer = new THREE.WebGLRenderer({ canvas: c3, alpha: true, antialias: !isMobile });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+  scene = new THREE.Scene();
+  cam3d = new THREE.PerspectiveCamera(60, 1, 0.01, 100);
+  cam3d.position.set(0, 0, 2);
+
+  scene.add(new THREE.AmbientLight(0xffffff, 0.8));
+  const d = new THREE.DirectionalLight(0xffffff, 1.2);
+  d.position.set(1, 3, 2); scene.add(d);
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x888888, 0.4));
+
+  resize();
+  renderLoop();
+  log('Three.js ready.', 'ok');
+}
+
+function renderLoop() {
+  requestAnimationFrame(renderLoop);
+  renderer.render(scene, cam3d);
+  S.fpsF++;
+  const now = performance.now();
+  if (now - S.fpsT >= 1000) {
+    S.fps = S.fpsF; S.fpsF = 0; S.fpsT = now;
+    $('m-fps').textContent = S.fps;
+  }
+}
+
+// ── Auto-load shoe.glb ──
+function autoLoad() {
+  loadGLBUrl('./shoe.glb', 'shoe.glb');
+}
+
+function loadGLBUrl(url, name) {
+  $('chip-dot').className = 'chip-dot loading';
+  $('chip-name').textContent = name;
+  $('chip-sub').textContent = 'loading…';
+
+  const loader = new THREE.GLTFLoader();
+  loader.load(url, gltf => {
+    installModel(gltf, name);
+  }, xhr => {
+    if (xhr.total) {
+      const p = Math.round(xhr.loaded / xhr.total * 100);
+      $('chip-sub').textContent = 'loading ' + p + '%';
+    }
+  }, err => {
+    $('chip-dot').className = 'chip-dot';
+    $('chip-name').textContent = 'Not found';
+    $('chip-sub').textContent = 'Upload a .glb below';
+    log('Auto-load failed — use the upload zone.', 'w');
+  });
+}
+
+function installModel(gltf, name) {
+  if (shoeL) { scene.remove(shoeL); shoeL = null; }
+  if (shoeR) { scene.remove(shoeR); shoeR = null; }
+
+  shoeL = gltf.scene;
+  shoeL.visible = false;
+
+  // Normalise size
+  const box    = new THREE.Box3().setFromObject(shoeL);
+  const size   = box.getSize(new THREE.Vector3());
+  const maxDim = Math.max(size.x, size.y, size.z);
+  shoeL.scale.setScalar(0.3 / maxDim);
+  const ctr = box.getCenter(new THREE.Vector3());
+  shoeL.position.sub(ctr.multiplyScalar(0.3 / maxDim));
+
+  scene.add(shoeL);
+  shoeR = shoeL.clone(true);
+  shoeR.visible = false;
+  shoeR.scale.x *= -1;
+  scene.add(shoeR);
+
+  S.modelLoaded = true;
+  $('chip-dot').className = 'chip-dot loaded';
+  $('chip-name').textContent = name;
+  $('chip-sub').textContent = 'model ready ✓';
+  $('pill-model').textContent = name;
+  $('pill-model').className = 'hdr-pill ok';
+  $('upload-zone').classList.add('has');
+  $('upload-name').textContent = name;
+  $('upload-name').style.display = 'block';
+
+  updateTrackBtn();
+  toast(name + ' loaded ✓');
+  log('Model ready: ' + name, 'ok');
+}
+
+// ── MediaPipe ──
+let pose, mpCam;
+
+const LM = {
+  LA:27, LH:29, LF:31,
+  RA:28, RH:30, RF:32,
+  LK:25, RK:26,
+};
+
+function initPose() {
+  pose = new Pose({
+    locateFile: f => 'https://cdn.jsdelivr.net/npm/@mediapipe/pose@0.5.1675469404/' + f
+  });
+  pose.setOptions({
+    modelComplexity: isMobile ? 0 : 1,
+    smoothLandmarks: true,
+    enableSegmentation: false,
+    minDetectionConfidence: +$('sl-det').value,
+    minTrackingConfidence:  +$('sl-trk').value,
+  });
+  pose.onResults(onResults);
+  log('Pose model ready (complexity=' + (isMobile?0:1) + ').', 'ok');
+}
+
+function onResults(r) {
+  if (!r.poseLandmarks) {
+    clearShoes(); drawOverlay(null);
+    $('m-conf').textContent = '—';
+    $('m-feet').textContent = '0';
+    $('m-pts').textContent  = '—';
+    return;
+  }
+  $('m-pts').textContent = r.poseLandmarks.length;
+  const lv = r.poseLandmarks[LM.LA]?.visibility || 0;
+  const rv = r.poseLandmarks[LM.RA]?.visibility || 0;
+  $('m-conf').textContent = Math.max(lv, rv).toFixed(2);
+  $('m-feet').textContent = (lv > 0.5 ? 1 : 0) + (rv > 0.5 ? 1 : 0);
+
+  drawOverlay(r.poseLandmarks);
+  placeShoes(r.poseLandmarks);
+}
+
+function clearShoes() {
+  if (shoeL) shoeL.visible = false;
+  if (shoeR) shoeR.visible = false;
+}
+
+// ── 2D overlay ──
+const SEGS = [
+  [LM.LK,LM.LA],[LM.LA,LM.LH],[LM.LA,LM.LF],[LM.LH,LM.LF],
+  [LM.RK,LM.RA],[LM.RA,LM.RH],[LM.RA,LM.RF],[LM.RH,LM.RF],
+];
+
+function drawOverlay(lms) {
+  const W = c2.width, H = c2.height;
+  ctx.clearRect(0, 0, W, H);
+  if (!lms) return;
+
+  function px(lm) {
+    return { x: (S.mirror ? 1 - lm.x : lm.x) * W, y: lm.y * H };
+  }
+
+  if (S.showSkel) {
+    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = 'rgba(0,102,255,0.6)';
+    for (const [a, b] of SEGS) {
+      const la = lms[a], lb = lms[b];
+      if (!la || !lb || la.visibility < 0.3 || lb.visibility < 0.3) continue;
+      const pa = px(la), pb = px(lb);
+      ctx.beginPath();
+      ctx.moveTo(pa.x, pa.y);
+      ctx.lineTo(pb.x, pb.y);
+      ctx.stroke();
+    }
+  }
+
+  if (S.showLM) {
+    for (const idx of Object.values(LM)) {
+      const lm = lms[idx];
+      if (!lm || lm.visibility < 0.3) continue;
+      const p = px(lm);
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, isMobile ? 5 : 4, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(255,60,0,0.85)';
+      ctx.fill();
+    }
+  }
+}
+
+// ── Shoe placement ──
+function getVal(desktopId, mobileId) {
+  return parseFloat($(isMobile && mobileId ? mobileId : desktopId).value);
+}
+
+function placeShoes(lms) {
+  if (!shoeL) return;
+  const sc = getVal('sl-sc', 'mob-sc');
+  const yO = getVal('sl-y',  'mob-y');
+  const zO = parseFloat($('sl-z').value);
+  const rY = getVal('sl-r',  'mob-r') * Math.PI / 180;
+
+  placeOne(shoeL, lms, 'L', sc, yO, zO, rY);
+  if (S.bothFeet) placeOne(shoeR, lms, 'R', sc, yO, zO, rY);
+  else if (shoeR) shoeR.visible = false;
+}
+
+function placeOne(model, lms, side, sc, yO, zO, rY) {
+  if (!model) return;
+  const ai = side==='L' ? LM.LA : LM.RA;
+  const hi = side==='L' ? LM.LH : LM.RH;
+  const fi = side==='L' ? LM.LF : LM.RF;
+
+  const a = lms[ai], h = lms[hi], f = lms[fi];
+  if (!a || !h || !f || a.visibility < 0.4) { model.visible = false; return; }
+
+  function w(lm) {
+    return new THREE.Vector3(
+      (S.mirror ? 1 - lm.x : lm.x) * 2 - 1,
+      -(lm.y * 2 - 1),
+      -lm.z * 2
+    );
+  }
+
+  const wA = w(a), wH = w(h), wF = w(f);
+  const dir = new THREE.Vector3().subVectors(wF, wH).normalize();
+  const len = wH.distanceTo(wF);
+
+  const mid = new THREE.Vector3().addVectors(wH, wA).multiplyScalar(0.5);
+  mid.y += yO;
+  mid.z += zO;
+
+  const angle = Math.atan2(dir.x, dir.z) + rY;
+  const bs    = len * sc * 1.8;
+
+  model.visible = true;
+  model.position.copy(mid);
+  model.rotation.set(0, angle, 0);
+  model.scale.set(side==='R' ? -bs : bs, bs, bs);
+}
+
+// ── Camera ──
+async function startCam() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: {
+        facingMode: 'environment',
+        width:  { ideal: isMobile ? 640 : 1280 },
+        height: { ideal: isMobile ? 480 : 720 },
+      }
+    });
+    cam.srcObject = stream;
+    S.camOn = true;
+    idleEl.classList.add('gone');
+    scanEl.classList.add('on');
+    $('pill-cam').textContent = 'camera on';
+    $('pill-cam').className   = 'hdr-pill ok';
+    $('btn-cam-start').style.display = 'none';
+    $('btn-cam-stop').style.display  = 'flex';
+    setMobCam(true);
+    updateTrackBtn();
+    log('Camera started.', 'ok');
+  } catch(e) {
+    log('Camera error: ' + e.message, 'e');
+    toast('Camera denied — check Safari settings');
+  }
+}
+
+function stopCam() {
+  if (cam.srcObject) { cam.srcObject.getTracks().forEach(t => t.stop()); cam.srcObject = null; }
+  if (mpCam) { mpCam.stop(); mpCam = null; }
+  S.camOn = false; S.tracking = false;
+  clearShoes();
+  ctx.clearRect(0, 0, c2.width, c2.height);
+  idleEl.classList.remove('gone');
+  scanEl.classList.remove('on');
+  hudEl.classList.remove('on');
+  $('pill-cam').textContent = 'camera off';
+  $('pill-cam').className   = 'hdr-pill';
+  $('pill-track').textContent = 'not tracking';
+  $('pill-track').className   = 'hdr-pill';
+  $('btn-cam-start').style.display = 'flex';
+  $('btn-cam-stop').style.display  = 'none';
+  setMobCam(false);
+  updateTrackBtn();
+  log('Camera stopped.', 'w');
+}
+
+function setMobCam(on) {
+  const b = $('mob-cam');
+  if (on) {
+    b.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/></svg> Stop';
+    b.classList.remove('btn-primary'); b.classList.add('btn-danger');
+  } else {
+    b.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg> Camera';
+    b.classList.add('btn-primary'); b.classList.remove('btn-danger');
+  }
+}
+
+// ── Tracking ──
+function updateTrackBtn() {
+  const ok = S.camOn && S.modelLoaded;
+  $('btn-track').disabled   = !ok;
+  $('mob-track').disabled   = !ok;
+}
+
+function toggleTrack() {
+  if (!S.tracking) {
+    S.tracking = true;
+    $('btn-track').textContent  = '⏸ Pause Tracking';
+    $('mob-track').textContent  = '⏸ Pause';
+    $('pill-track').textContent = 'tracking';
+    $('pill-track').className   = 'hdr-pill live';
+    hudEl.classList.add('on');
+    log('Tracking started.', 'ok');
+    startMP();
+  } else {
+    S.tracking = false;
+    if (mpCam) { mpCam.stop(); mpCam = null; }
+    clearShoes();
+    ctx.clearRect(0, 0, c2.width, c2.height);
+    hudEl.classList.remove('on');
+    $('btn-track').textContent  = '▶ Start Tracking';
+    $('mob-track').textContent  = '▶ Track';
+    $('pill-track').textContent = 'paused';
+    $('pill-track').className   = 'hdr-pill';
+    log('Tracking paused.', 'w');
+  }
+}
+
+function startMP() {
+  if (!pose) initPose();
+  pose.setOptions({
+    minDetectionConfidence: +$('sl-det').value,
+    minTrackingConfidence:  +$('sl-trk').value,
+  });
+  mpCam = new Camera(cam, {
+    onFrame: async () => { if (S.tracking) await pose.send({ image: cam }); },
+    width:  isMobile ? 640 : 1280,
+    height: isMobile ? 480 : 720,
+  });
+  mpCam.start();
+  log('MediaPipe loop running.', 'ok');
+}
+
+// ── Screenshot ──
+function screenshot() {
+  const out = document.createElement('canvas');
+  const vp  = $('vp');
+  out.width = vp.clientWidth; out.height = vp.clientHeight;
+  const cx = out.getContext('2d');
+  cx.drawImage(cam,   0, 0, out.width, out.height);
+  cx.drawImage(c3,    0, 0);
+  cx.drawImage(c2,    0, 0);
+  const a = document.createElement('a');
+  a.href = out.toDataURL('image/png');
+  a.download = 'ar-tryon-' + Date.now() + '.png';
+  a.click();
+  toast('Screenshot saved 📷');
+}
+
+// ── Reset ──
+function doReset() {
+  [['sl-sc','1.0','v-sc','1.00'],
+   ['sl-y','0','v-y','0.00'],
+   ['sl-z','0','v-z','0.00'],
+   ['sl-r','0','v-r','0°'],
+   ['mob-sc','1.0','mob-v-sc','1.00'],
+   ['mob-y','0','mob-v-y','0.00'],
+   ['mob-r','0','mob-v-r','0°']
+  ].forEach(([sl,val,vl,display]) => {
+    if ($(sl)) $(sl).value = val;
+    if ($(vl)) $(vl).textContent = display;
+  });
+  toast('Reset ✓');
+}
+
+// ── Toggles ──
+function bindTog(id, prop) {
+  const el = $(id); if (!el) return;
+  el.addEventListener('click', () => {
+    S[prop] = !S[prop];
+    el.classList.toggle('on', S[prop]);
+    if (prop === 'bothFeet' && shoeR && !S[prop]) shoeR.visible = false;
+  });
+}
+
+// ── Slider sync (desktop ↔ mobile) ──
+function syncSliders(dId, mId, dVId, mVId, fmt) {
+  const d = $(dId), m = $(mId), dv = $(dVId), mv = $(mVId);
+  function upd(src, dst, valEl) {
+    const v = parseFloat(src.value);
+    if (dst) dst.value = v;
+    const txt = fmt ? fmt(v) : v.toFixed(2);
+    if (valEl) valEl.textContent = txt;
+  }
+  if (d) d.addEventListener('input', () => upd(d, m, dv));
+  if (m) m.addEventListener('input', () => upd(m, d, mv));
+}
+
+// ── Init ──
+document.addEventListener('DOMContentLoaded', () => {
+  initThree();
+  initPose();
+
+  // Camera
+  $('btn-cam-start').addEventListener('click', startCam);
+  $('btn-cam-stop').addEventListener('click', stopCam);
+  $('mob-cam').addEventListener('click', () => S.camOn ? stopCam() : startCam());
+
+  // Tracking
+  $('btn-track').addEventListener('click', toggleTrack);
+  $('mob-track').addEventListener('click', toggleTrack);
+
+  // Screenshot
+  $('btn-screenshot').addEventListener('click', screenshot);
+  $('mob-shot').addEventListener('click', screenshot);
+
+  // Reset
+  $('btn-reset').addEventListener('click', doReset);
+  $('btn-reset-f').addEventListener('click', doReset);
+
+  // GLB upload (desktop)
+  $('glb-input').addEventListener('change', e => {
+    if (e.target.files[0]) {
+      const url = URL.createObjectURL(e.target.files[0]);
+      loadGLBUrl(url, e.target.files[0].name);
+    }
+  });
+
+  // GLB upload (mobile)
+  $('mob-glb-input').addEventListener('change', e => {
+    if (e.target.files[0]) {
+      const url = URL.createObjectURL(e.target.files[0]);
+      loadGLBUrl(url, e.target.files[0].name);
+    }
+  });
+
+  // Toggles
+  bindTog('tog-sk', 'showSkel');
+  bindTog('tog-lm', 'showLM');
+  bindTog('tog-bf', 'bothFeet');
+
+  // Synced sliders
+  syncSliders('sl-sc', 'mob-sc', 'v-sc', 'mob-v-sc', v => v.toFixed(2));
+  syncSliders('sl-y',  'mob-y',  'v-y',  'mob-v-y',  v => v.toFixed(2));
+  syncSliders('sl-r',  'mob-r',  'v-r',  'mob-v-r',  v => Math.round(v) + '°');
+
+  // Desktop-only sliders
+  $('sl-z').addEventListener('input', () => { $('v-z').textContent = parseFloat($('sl-z').value).toFixed(2); });
+  $('sl-det').addEventListener('input', () => { $('v-det').textContent = parseFloat($('sl-det').value).toFixed(2); });
+  $('sl-trk').addEventListener('input', () => { $('v-trk').textContent = parseFloat($('sl-trk').value).toFixed(2); });
+
+  resize();
+});
+</script>
+</body>
+</html>
